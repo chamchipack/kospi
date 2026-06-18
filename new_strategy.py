@@ -144,7 +144,9 @@ st.subheader("📋 가격 상세 정보 (양봉/음봉 색상 구분)")
 # style.apply로 행(axis=1) 전체에 함수 적용
 styled_df = df_detail.style.apply(highlight_candles, axis=1)
 
-st.dataframe(styled_df, use_container_width=True)
+# st.dataframe 대신 st.table을 사용하세요!
+st.table(styled_df)
+
 
 # [신규 추가] 최근 10일 상세 지표 출력
 st.subheader("📋 최근 10일 상세 데이터")
