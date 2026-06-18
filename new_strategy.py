@@ -82,20 +82,67 @@ st.dataframe(df.rename(columns=rename_dict)[df["signal"] != 0][["종가", "거�
 
 st.subheader("📈 시세 및 거래량 차트")
 
-# 1. 거래량: 막대 차트 (이건 오류 안 남)
+# 거래량 막대
 st.bar_chart(df["Volume"].tail(50))
 
-# 2. 시세: 캔들스틱 버리고 '라인 차트'로 변경
-# 종가(Close)를 라인으로, 전환선(tenkan_sen)을 라인으로
-chart_data = df[["Close", "tenkan_sen"]].tail(50).rename(columns={"Close": "종가", "tenkan_sen": "전환선"})
-st.line_chart(chart_data)
+# 캔들 차트 그리기 바로 윗줄에 추가하세요
+# 1. 색상 결정 컬럼 생성 (True면 상승, False면 하락)
+df['is_increasing'] = df['Close'] >= df['Open']
+
+# 1. 비어있는 값 제거 (가장 중요)
+df = df.dropna(subset=['Open', 'High', 'Low', 'Close'])
+
+# 2. 시가/종가 강제 재정렬
+# 혹시라도 데이터가 꼬였을 수 있으니 시가와 종가가 확실히 비교되도록 합니다.
+
+# 2. 색상 리스트 생성
+colors = ['red' if x else 'blue' for x in df['is_increasing'].tail(50)]
+
+# 3. 캔들스틱 생성 시 line_color 사용
+fig = go.Figure(data=[go.Candlestick(
+    x=df.tail(50).index,
+    open=df.tail(50)['Open'],
+    high=df.tail(50)['High'],
+    low=df.tail(50)['Low'],
+    close=df.tail(50)['Close'],
+    # 🔴 상승일 땐 빨간색, 하락일 땐 파란색으로 개별 지정
+    increasing_line_color='red',
+    decreasing_line_color='blue',
+    name='시세'
+)])
+# 전환선 추가 (add_trace 사용)
+fig.add_trace(go.Scatter(
+    x=df.tail(50).index, 
+    y=df.tail(50)['tenkan_sen'], 
+    mode='lines', 
+    name='전환선', 
+    line=dict(color='orange', width=2)
+))
+
+# 레이아웃 설정
+fig.update_layout(xaxis_rangeslider_visible=False, height=500)
+st.plotly_chart(fig, use_container_width=True)
+
 
 # 3. 상세 정보는 '표'로 확인 (여기가 팩트입니다)
-st.subheader("📋 가격 상세 정보 (시가/고가/저가/종가)")
-df_detail = df.tail(10)[["Open", "High", "Low", "Close"]].rename(columns={
-    "Open": "시가", "High": "고가", "Low": "저가", "Close": "종가"
-})
-st.dataframe(df_detail, use_container_width=True)
+# 1. 양봉/음봉 색상 설정 함수
+def highlight_candles(row):
+    # '종가'와 '시가'를 비교하여 색상 결정
+    if row['종가'] > row['시가']:
+        color = 'background-color: #ffcccc'  # 연한 빨간색 (양봉)
+    elif row['종가'] < row['시가']:
+        color = 'background-color: #cce5ff'  # 연한 파란색 (음봉)
+    else:
+        color = ''  # 시가와 종가가 같으면 색 없음
+    return [color] * len(row)
+
+# 2. 스타일 적용하여 표 띄우기
+st.subheader("📋 가격 상세 정보 (양봉/음봉 색상 구분)")
+
+# style.apply로 행(axis=1) 전체에 함수 적용
+styled_df = df_detail.style.apply(highlight_candles, axis=1)
+
+st.dataframe(styled_df, use_container_width=True)
 
 # [신규 추가] 최근 10일 상세 지표 출력
 st.subheader("📋 최근 10일 상세 데이터")
