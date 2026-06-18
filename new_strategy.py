@@ -89,6 +89,12 @@ st.bar_chart(df["Volume"].tail(50))
 # 1. 색상 결정 컬럼 생성 (True면 상승, False면 하락)
 df['is_increasing'] = df['Close'] >= df['Open']
 
+# 1. 비어있는 값 제거 (가장 중요)
+df = df.dropna(subset=['Open', 'High', 'Low', 'Close'])
+
+# 2. 시가/종가 강제 재정렬
+# 혹시라도 데이터가 꼬였을 수 있으니 시가와 종가가 확실히 비교되도록 합니다.
+
 # 2. 색상 리스트 생성
 colors = ['red' if x else 'blue' for x in df['is_increasing'].tail(50)]
 
