@@ -125,6 +125,8 @@ st.plotly_chart(fig, use_container_width=True)
 
 
 # 3. 상세 정보는 '표'로 확인 (여기가 팩트입니다)
+
+# 2. 스타일 적용하여 표 띄우기
 # 1. 양봉/음봉 색상 설정 함수
 def highlight_candles(row):
     # '종가'와 '시가'를 비교하여 색상 결정
