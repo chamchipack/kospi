@@ -125,10 +125,18 @@ st.plotly_chart(fig, use_container_width=True)
 
 
 # 3. 상세 정보는 '표'로 확인 (여기가 팩트입니다)
-st.subheader("📋 가격 상세 정보 (시가/고가/저가/종가)")
+st.subheader("📋 가격 상세 정보 (양봉/음봉 구분)")
+
+# 1. 색상 로직을 적용한 새로운 열(Column)을 데이터프레임에 아예 만들어버립니다.
+# 스타일 함수를 거치지 않고, 데이터프레임 자체에 정보를 넣는 방식입니다.
 df_detail = df.tail(10)[["Open", "High", "Low", "Close"]].rename(columns={
     "Open": "시가", "High": "고가", "Low": "저가", "Close": "종가"
 })
+
+# 2. '상태' 열을 추가하여 양봉/음봉을 명시합니다. (이게 가장 안전합니다)
+df_detail['상태'] = df_detail.apply(lambda row: '▲ 양봉' if row['종가'] > row['시가'] else ('▼ 음봉' if row['종가'] < row['시가'] else '— 보합'), axis=1)
+
+# 3. 데이터프레임 출력
 st.dataframe(df_detail, use_container_width=True)
 
 # [신규 추가] 최근 10일 상세 지표 출력
