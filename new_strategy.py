@@ -125,26 +125,11 @@ st.plotly_chart(fig, use_container_width=True)
 
 
 # 3. 상세 정보는 '표'로 확인 (여기가 팩트입니다)
-# 1. 색상 매핑 함수 (양봉/음봉 구분)
-def get_color(val, row):
-    # '종가'가 '시가'보다 높으면 빨간색, 낮으면 파란색
-    if row['종가'] > row['시가']:
-        return "#ffcccc" # 연한 빨강
-    elif row['종가'] < row['시가']:
-        return "#cce5ff" # 연한 파랑
-    return None
-
-# 2. 스타일링 적용
-# 스타일을 적용한 데이터프레임 생성 (기존 df_detail 사용)
-styled_df = df_detail.style.apply(
-    lambda row: [f"background-color: {get_color(row['종가'], row)}" for _ in row], 
-    axis=1
-)
-
-st.subheader("📋 가격 상세 정보 (양봉/음봉 색상 구분)")
-
-# 3. st.dataframe에 직접 넣기 (Styler 객체 사용)
-st.dataframe(styled_df, use_container_width=True)
+st.subheader("📋 가격 상세 정보 (시가/고가/저가/종가)")
+df_detail = df.tail(10)[["Open", "High", "Low", "Close"]].rename(columns={
+    "Open": "시가", "High": "고가", "Low": "저가", "Close": "종가"
+})
+st.dataframe(df_detail, use_container_width=True)
 
 # [신규 추가] 최근 10일 상세 지표 출력
 st.subheader("📋 최근 10일 상세 데이터")
