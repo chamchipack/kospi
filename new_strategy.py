@@ -82,46 +82,20 @@ st.dataframe(df.rename(columns=rename_dict)[df["signal"] != 0][["종가", "거�
 
 st.subheader("📈 시세 및 거래량 차트")
 
-# 거래량 막대
+# 1. 거래량: 막대 차트 (이건 오류 안 남)
 st.bar_chart(df["Volume"].tail(50))
 
-# 캔들 차트 그리기 바로 윗줄에 추가하세요
-# 1. 색상 결정 컬럼 생성 (True면 상승, False면 하락)
-df['is_increasing'] = df['Close'] >= df['Open']
+# 2. 시세: 캔들스틱 버리고 '라인 차트'로 변경
+# 종가(Close)를 라인으로, 전환선(tenkan_sen)을 라인으로
+chart_data = df[["Close", "tenkan_sen"]].tail(50).rename(columns={"Close": "종가", "tenkan_sen": "전환선"})
+st.line_chart(chart_data)
 
-# 1. 비어있는 값 제거 (가장 중요)
-df = df.dropna(subset=['Open', 'High', 'Low', 'Close'])
-
-# 2. 시가/종가 강제 재정렬
-# 혹시라도 데이터가 꼬였을 수 있으니 시가와 종가가 확실히 비교되도록 합니다.
-
-# 2. 색상 리스트 생성
-colors = ['red' if x else 'blue' for x in df['is_increasing'].tail(50)]
-
-# 3. 캔들스틱 생성 시 line_color 사용
-fig = go.Figure(data=[go.Candlestick(
-    x=df.tail(50).index,
-    open=df.tail(50)['Open'],
-    high=df.tail(50)['High'],
-    low=df.tail(50)['Low'],
-    close=df.tail(50)['Close'],
-    # 🔴 상승일 땐 빨간색, 하락일 땐 파란색으로 개별 지정
-    increasing_line_color='red',
-    decreasing_line_color='blue',
-    name='시세'
-)])
-# 전환선 추가 (add_trace 사용)
-fig.add_trace(go.Scatter(
-    x=df.tail(50).index, 
-    y=df.tail(50)['tenkan_sen'], 
-    mode='lines', 
-    name='전환선', 
-    line=dict(color='orange', width=2)
-))
-
-# 레이아웃 설정
-fig.update_layout(xaxis_rangeslider_visible=False, height=500)
-st.plotly_chart(fig, use_container_width=True)
+# 3. 상세 정보는 '표'로 확인 (여기가 팩트입니다)
+st.subheader("📋 가격 상세 정보 (시가/고가/저가/종가)")
+df_detail = df.tail(10)[["Open", "High", "Low", "Close"]].rename(columns={
+    "Open": "시가", "High": "고가", "Low": "저가", "Close": "종가"
+})
+st.dataframe(df_detail, use_container_width=True)
 
 # [신규 추가] 최근 10일 상세 지표 출력
 st.subheader("📋 최근 10일 상세 데이터")
