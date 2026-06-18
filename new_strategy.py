@@ -86,21 +86,24 @@ st.subheader("📈 시세 및 거래량 차트")
 st.bar_chart(df["Volume"].tail(50))
 
 # 캔들 차트 그리기 바로 윗줄에 추가하세요
-df[['Open', 'High', 'Low', 'Close']] = df[['Open', 'High', 'Low', 'Close']].astype(float)
+# 1. 색상 결정 컬럼 생성 (True면 상승, False면 하락)
+df['is_increasing'] = df['Close'] >= df['Open']
 
-# 캔들스틱 차트 생성
+# 2. 색상 리스트 생성
+colors = ['red' if x else 'blue' for x in df['is_increasing'].tail(50)]
+
+# 3. 캔들스틱 생성 시 line_color 사용
 fig = go.Figure(data=[go.Candlestick(
     x=df.tail(50).index,
     open=df.tail(50)['Open'],
     high=df.tail(50)['High'],
     low=df.tail(50)['Low'],
     close=df.tail(50)['Close'],
-    name='시세',
-    # 🔴 색상 강제 지정 (상승=빨강, 하락=파랑)
-    increasing_line_color='red', 
-    decreasing_line_color='blue'
+    # 🔴 상승일 땐 빨간색, 하락일 땐 파란색으로 개별 지정
+    increasing_line_color='red',
+    decreasing_line_color='blue',
+    name='시세'
 )])
-
 # 전환선 추가 (add_trace 사용)
 fig.add_trace(go.Scatter(
     x=df.tail(50).index, 
