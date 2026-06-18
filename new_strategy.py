@@ -108,8 +108,6 @@ fig.add_trace(go.Scatter(
 fig.update_layout(xaxis_rangeslider_visible=False, height=500)
 st.plotly_chart(fig, use_container_width=True)
 
-st.line_chart(chart_data)
-
 # [신규 추가] 최근 10일 상세 지표 출력
 st.subheader("📋 최근 10일 상세 데이터")
 recent_df = df.tail(10).rename(columns=rename_dict)
