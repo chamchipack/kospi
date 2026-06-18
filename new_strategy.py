@@ -79,11 +79,13 @@ rename_dict = {
 st.subheader("📊 매매 신호 발생 내역")
 st.dataframe(df.rename(columns=rename_dict)[df["signal"] != 0][["종가", "거래량", "신호"]].tail(10), use_container_width=True)
 
+st.subheader("📈 시세 및 거래량 차트")
+st.bar_chart(df["Volume"].tail(50))
+chart_data = df[["Close", "tenkan_sen"]].tail(50).rename(columns={"Close": "종가", "tenkan_sen": "전환선"})
+
+st.line_chart(chart_data)
+
 # [신규 추가] 최근 10일 상세 지표 출력
 st.subheader("📋 최근 10일 상세 데이터")
 recent_df = df.tail(10).rename(columns=rename_dict)
 st.dataframe(recent_df[["종가", "전환선", "거래량", "5일거래량평균", "RSI"]], use_container_width=True)
-
-st.subheader("📈 시세 및 거래량 차트")
-st.bar_chart(df["Volume"].tail(50))
-st.line_chart(df["Close"].tail(50))
