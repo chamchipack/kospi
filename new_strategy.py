@@ -55,10 +55,38 @@ if USE_VOLUME_SPIKE: buy_cond &= cond_volume_burst
 df.loc[buy_cond, "signal"] = 1
 
 # 5. 화면 출력
+# st.subheader(f"{ticker} 분석 결과")
+# signals = df[df["signal"] != 0][["Close", "tenkan_sen", "Volume", "RSI", "signal"]]
+# st.dataframe(signals.tail(10))
+
+# st.subheader("최근 10일 상세 지표")
+# st.line_chart(df[["Close", "tenkan_sen"]].tail(30))
+# st.dataframe(df.tail(10)[["Close", "tenkan_sen", "Volume", "Vol_MA5", "RSI"]])
+
+# ===== 5. 화면 출력 부분 수정 =====
 st.subheader(f"{ticker} 분석 결과")
+
+# 한글 매핑 딕셔너리 생성
+rename_dict = {
+    "Close": "종가",
+    "tenkan_sen": "전환선",
+    "Volume": "거래량",
+    "Vol_MA5": "5일거래량평균",
+    "RSI": "RSI",
+    "signal": "매매신호"
+}
+
+# 1. 매매 신호 표 한글화
 signals = df[df["signal"] != 0][["Close", "tenkan_sen", "Volume", "RSI", "signal"]]
+signals = signals.rename(columns=rename_dict)
 st.dataframe(signals.tail(10))
 
+# 2. 상세 지표 표 한글화
 st.subheader("최근 10일 상세 지표")
-st.line_chart(df[["Close", "tenkan_sen"]].tail(30))
-st.dataframe(df.tail(10)[["Close", "tenkan_sen", "Volume", "Vol_MA5", "RSI"]])
+df_recent = df.tail(10)[["Close", "tenkan_sen", "Volume", "Vol_MA5", "RSI"]]
+df_recent = df_recent.rename(columns=rename_dict)
+st.dataframe(df_recent)
+
+# 3. 차트 컬럼명도 맞춰주기 (차트 상단 범례가 한글로 표시됨)
+chart_df = df[["Close", "tenkan_sen"]].tail(30).rename(columns={"Close": "종가", "tenkan_sen": "전환선"})
+st.line_chart(chart_df)
