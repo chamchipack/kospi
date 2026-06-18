@@ -2,6 +2,7 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 import numpy as np
+import plotly.graph_objects as go
 
 # 페이지 설정
 st.set_page_config(layout="wide", page_title="주식 전략 분석기")
@@ -80,8 +81,32 @@ st.subheader("📊 매매 신호 발생 내역")
 st.dataframe(df.rename(columns=rename_dict)[df["signal"] != 0][["종가", "거래량", "신호"]].tail(10), use_container_width=True)
 
 st.subheader("📈 시세 및 거래량 차트")
+
+# 거래량 막대
 st.bar_chart(df["Volume"].tail(50))
-chart_data = df[["Close", "tenkan_sen"]].tail(50).rename(columns={"Close": "종가", "tenkan_sen": "전환선"})
+
+# 캔들스틱 차트 생성
+fig = go.Figure(data=[go.Candlestick(
+    x=df.tail(50).index,
+    open=df.tail(50)['Open'],
+    high=df.tail(50)['High'],
+    low=df.tail(50)['Low'],
+    close=df.tail(50)['Close'],
+    name='시세'
+)])
+
+# 전환선 추가 (add_trace 사용)
+fig.add_trace(go.Scatter(
+    x=df.tail(50).index, 
+    y=df.tail(50)['tenkan_sen'], 
+    mode='lines', 
+    name='전환선', 
+    line=dict(color='orange', width=2)
+))
+
+# 레이아웃 설정
+fig.update_layout(xaxis_rangeslider_visible=False, height=500)
+st.plotly_chart(fig, use_container_width=True)
 
 st.line_chart(chart_data)
 
