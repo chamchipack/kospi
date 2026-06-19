@@ -469,6 +469,8 @@ st.plotly_chart(fig, use_container_width=True)
 if USE_RELATIVE_STRENGTH:
     st.markdown("##### 🆚 시장(KOSPI) 대비 상대강도 추이")
     st.caption("0보다 위에 있으면 시장보다 더 잘 가고 있다는 뜻, 우상향이면 점점 더 강해지고 있다는 뜻이에요.")
+    st.caption("• 밴드 폭이 1 이상이면 변동성이 커지며 시장보다 강한 탄력을 받고 있다는 신호입니다.")
+    st.caption("• 밴드 폭이 1 이하이면 에너지가 응축되는 횡보 구간으로, 시장의 움직임이 둔화된 상태입니다.")
     fig_rs = go.Figure()
     fig_rs.add_trace(go.Scatter(x=df_chart.tail(60).index, y=df_chart.tail(60)['Relative_Strength'], mode='lines', name='상대강도', line=dict(color='green', width=2)))
     fig_rs.add_hline(y=0, line_dash="dash", line_color="gray")
@@ -477,7 +479,9 @@ if USE_RELATIVE_STRENGTH:
 
 # ===== 볼린저 밴드 폭(스퀴즈) 차트 =====
 st.markdown("##### 🌀 변동성 수축/확장 (볼린저 밴드 폭)")
-st.caption("밴드 폭이 좁아졌다가(스퀴즈) 다시 넓어지기 시작하는 지점(💥)은 큰 움직임이 시작될 수 있는 신호예요.")
+st.caption("• 스퀴즈 해제는 방향이 결정된 것이 아니라, 💥응축되었던 변동성이 위든 아래든 터지기 시작하는 초기 신호입니다.")
+st.caption("• 밴드 상단을 강하게 돌파하며 벌어지면 상승 추세로, 하단을 강하게 이탈하며 벌어지면 하락 추세로 판단합니다.")
+st.caption("• 따라서 스퀴즈 해제 표시가 떴을 때는, 가격이 어느 쪽 밴드를 먼저 뚫고 나가는지 확인하는 것이 가장 중요합니다.")
 fig_bb = go.Figure()
 fig_bb.add_trace(go.Scatter(x=df_chart.tail(60).index, y=df_chart.tail(60)['BB_Width'], mode='lines', name='밴드폭', line=dict(color='teal', width=2)))
 squeeze_points = df_chart.tail(60)[df_chart.tail(60)['스퀴즈해제'] == "💥"]
