@@ -334,3 +334,86 @@ recent_df['상태'] = recent_df.apply(lambda row: '▲ 양봉' if row['Close'] >
 display_df = recent_df.rename(columns={"Open": "시가", "Close": "종가", "tenkan_sen": "전환선", "Volume": "거래량", "RSI": "RSI", "Stop_Loss": "ATR손절가"})
 show_cols = ["시가", "종가", "거래량", "RSI", "ATR손절가", "상태", "신호"]
 st.dataframe(display_df[show_cols], use_container_width=True)
+
+
+# ============================================================
+# 💡 [추가] 섹터 로테이션 — 지금 어느 업종에 돈이 몰리고 있는지
+# ============================================================
+# 개념: 같은 기간 동안 주요 섹터 ETF들의 수익률을 비교해서,
+#       상대적으로 강한 섹터/약한 섹터를 한눈에 보는 도구예요.
+#       개별 종목 신호가 좋아도, 그 종목이 속한 섹터 자체가 약하면
+#       전체적인 순풍을 못 받고 있을 수 있어요.
+#
+# 참고: 한국 개별 업종 ETF(반도체, 2차전지 등)는 yfinance에서
+#       데이터가 부실한 경우가 많아, 정보가 안정적인 미국 섹터 ETF
+#       (S&P500 11개 섹터 대표 ETF) 기준으로 구성했어요.
+#       미국 시장 기준이지만, 글로벌 자금 흐름의 큰 그림을 보는 데
+#       참고할 수 있어요.
+
+st.markdown("---")
+st.markdown("##### 🔄 섹터 로테이션 (최근 자금이 몰리는 업종)")
+st.caption("S&P500 11개 섹터 대표 ETF의 최근 수익률을 비교해요. 상대강도가 강한 섹터는 "
+           "지금 시장의 관심이 몰려있다는 뜻이고, 약한 섹터는 자금이 빠져나가고 있다는 뜻이에요. "
+           "내가 보는 종목의 섹터가 상위권이면 순풍, 하위권이면 역풍을 맞고 있다고 해석할 수 있어요.")
+
+sector_period = st.selectbox("섹터 비교 기간", ["1개월", "3개월", "6개월"], index=0, key="sector_period")
+sector_period_map = {"1개월": "1mo", "3개월": "3mo", "6개월": "6mo"}
+
+sector_etfs = {
+    "XLK 기술": "XLK",
+    "XLF 금융": "XLF",
+    "XLV 헬스케어": "XLV",
+    "XLE 에너지": "XLE",
+    "XLY 임의소비재": "XLY",
+    "XLP 필수소비재": "XLP",
+    "XLI 산업재": "XLI",
+    "XLB 소재": "XLB",
+    "XLU 유틸리티": "XLU",
+    "XLRE 부동산": "XLRE",
+    "XLC 커뮤니케이션": "XLC",
+}
+
+@st.cache_data(ttl=3600)  # 1시간 캐시 - 매번 11개 ETF를 다시 받지 않도록
+def get_sector_returns(period):
+    results = []
+    for name, ticker in sector_etfs.items():
+        try:
+            hist = yf.Ticker(ticker).history(period=period)
+            if hist.empty:
+                continue
+            ret = (hist["Close"].iloc[-1] / hist["Close"].iloc[0] - 1) * 100
+            results.append({"섹터": name, "티커": ticker, "수익률(%)": round(ret, 2)})
+        except Exception:
+            continue
+    return pd.DataFrame(results).sort_values("수익률(%)", ascending=False)
+
+with st.spinner("섹터별 데이터 수집 중..."):
+    df_sector = get_sector_returns(sector_period_map[sector_period])
+
+if not df_sector.empty:
+    # 막대그래프로 시각화 - 강한 섹터(양수)는 빨강, 약한 섹터(음수)는 파랑
+    colors = ["#d62728" if v >= 0 else "#1f77b4" for v in df_sector["수익률(%)"]]
+    fig_sector = go.Figure(data=[go.Bar(
+        x=df_sector["섹터"],
+        y=df_sector["수익률(%)"],
+        marker_color=colors,
+        text=df_sector["수익률(%)"].astype(str) + "%",
+        textposition="outside"
+    )])
+    fig_sector.update_layout(
+        height=350,
+        xaxis_title="",
+        yaxis_title=f"{sector_period} 수익률(%)",
+        showlegend=False
+    )
+    st.plotly_chart(fig_sector, use_container_width=True)
+
+    col_top, col_bottom = st.columns(2)
+    with col_top:
+        st.markdown("**🔥 강세 섹터 TOP 3**")
+        st.dataframe(df_sector.head(3)[["섹터", "수익률(%)"]], use_container_width=True, hide_index=True)
+    with col_bottom:
+        st.markdown("**🧊 약세 섹터 TOP 3**")
+        st.dataframe(df_sector.tail(3)[["섹터", "수익률(%)"]].sort_values("수익률(%)"), use_container_width=True, hide_index=True)
+else:
+    st.warning("섹터 데이터를 가져오지 못했어요. 잠시 후 다시 시도해주세요.")
