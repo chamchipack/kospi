@@ -6,6 +6,153 @@ import plotly.graph_objects as go
 
 # 페이지 설정
 st.set_page_config(layout="wide", page_title="주식 전략 분석기")
+
+
+@st.cache_data(ttl=300)  # 5분 캐시 - 너무 자주 다시 받지 않도록
+def get_macro_data():
+    macro_tickers = {
+        "원/달러": "KRW=X",
+        "엔/달러": "JPY=X",
+        "美 10년물": "^TNX",
+        "WTI유": "CL=F",
+        "VIX": "^VIX",
+        "S&P500": "^GSPC",
+        "S&P500 선물": "ES=F",
+        "나스닥": "^IXIC",
+        "나스닥 선물": "NQ=F",
+        "필라델피아 반도체": "^SOX",
+    }
+    results = []
+    for name, ticker in macro_tickers.items():
+        try:
+            hist = yf.Ticker(ticker).history(period="5d")
+            if hist.empty or len(hist) < 2:
+                continue
+            current = hist["Close"].iloc[-1]
+            prev = hist["Close"].iloc[-2]
+            change_pct = (current - prev) / prev * 100
+            results.append({"name": name, "value": current, "change_pct": change_pct})
+        except Exception:
+            continue
+    return results
+ 
+macro_data = get_macro_data()
+ 
+st.markdown("---")
+st.markdown("##### 🌍 오늘의 시장 환경")
+ 
+display_mode = st.radio("표시 방식", ["흘러가는 티커", "고정 카드"], horizontal=True, label_visibility="collapsed")
+ 
+if display_mode == "흘러가는 티커":
+    # ----- 주식 전광판 스타일 스크롤링 티커 (HTML/CSS 직접 삽입) -----
+    ticker_items_html = ""
+    for item in macro_data:
+        color = "#d62728" if item["change_pct"] >= 0 else "#1f77b4"  # 상승 빨강, 하락 파랑
+        arrow = "▲" if item["change_pct"] >= 0 else "▼"
+        ticker_items_html += f"""
+        <span style="margin-right: 40px; white-space: nowrap;">
+            <b>{item['name']}</b>
+            <span style="margin-left:6px;">{item['value']:,.2f}</span>
+            <span style="color:{color}; margin-left:6px;">{arrow} {abs(item['change_pct']):.2f}%</span>
+        </span>
+        """
+    # 끊김 없이 보이도록 동일 내용 2번 반복
+    full_content = ticker_items_html * 2
+ 
+    scrolling_html = f"""
+    <style>
+    .ticker-wrap {{
+        width: 100%;
+        overflow: hidden;
+        background-color: #0e1117;
+        padding: 10px 0;
+        border-radius: 6px;
+        box-sizing: border-box;
+    }}
+    .ticker-move {{
+        display: inline-block;
+        white-space: nowrap;
+        animation: scroll-left 35s linear infinite;
+        font-size: 14px;
+        color: #fafafa;
+        font-family: -apple-system, sans-serif;
+    }}
+    @keyframes scroll-left {{
+        0%   {{ transform: translateX(0%); }}
+        100% {{ transform: translateX(-50%); }}
+    }}
+    </style>
+    <div class="ticker-wrap">
+        <div class="ticker-move">{full_content}</div>
+    </div>
+    """
+    st.components.v1.html(scrolling_html, height=50)
+    st.caption("💡 흘러가는 화면이 끊기거나 너무 빠르면 위에서 '고정 카드'를 선택하세요.")
+ 
+else:
+    # ----- 고정 카드 버전 (작은 글씨, 화면 상단에 깔끔하게) -----
+    cols = st.columns(5)
+    for idx, item in enumerate(macro_data):
+        card_color = "#d62728" if item["change_pct"] >= 0 else "#1f77b4"
+        card_arrow = "▲" if item["change_pct"] >= 0 else "▼"
+        with cols[idx % 5]:
+            st.markdown(
+                f"<div style='font-size:12px; color:gray;'>{item['name']}</div>"
+                f"<div style='font-size:15px; font-weight:bold;'>{item['value']:,.2f} "
+                f"<span style='font-size:12px; color:{card_color};'>"
+                f"{card_arrow}{abs(item['change_pct']):.2f}%</span></div>",
+                unsafe_allow_html=True
+            )
+ 
+# ============================================================
+# 💡 [추가] 신용 스프레드 — 시장이 진짜로 불안한지 보는 지표
+# ============================================================
+st.markdown("---")
+st.markdown("##### 💳 신용 스프레드 (위험자산 회피 심리)")
+st.caption(
+    "VIX는 '주가 변동성'만 보지만, 이 지표는 채권시장이 느끼는 불안까지 같이 봐요. "
+    "**HYG**(고위험 회사채 ETF)가 빠지는데 **TLT**(미국 장기국채 ETF)가 오르면, "
+    "투자자들이 위험자산을 버리고 안전자산으로 도망가는 중이라는 뜻이에요. "
+    "이런 날은 개별 종목의 매수 신호가 떠도 한 박자 신중하게 접근하는 걸 권장해요. "
+    "반대로 둘 다 같이 오르내리면 특별한 위험 회피 신호는 아니에요."
+)
+ 
+@st.cache_data(ttl=300)
+def get_credit_spread_data():
+    tickers = {"HYG (하이일드 회사채)": "HYG", "TLT (미국 장기국채)": "TLT"}
+    results = []
+    for name, ticker in tickers.items():
+        try:
+            hist = yf.Ticker(ticker).history(period="5d")
+            if hist.empty or len(hist) < 2:
+                continue
+            current = hist["Close"].iloc[-1]
+            prev = hist["Close"].iloc[-2]
+            change_pct = (current - prev) / prev * 100
+            results.append({"name": name, "value": current, "change_pct": change_pct})
+        except Exception:
+            continue
+    return results
+ 
+credit_data = get_credit_spread_data()
+ 
+if len(credit_data) == 2:
+    c1, c2 = st.columns(2)
+    for col, item in zip([c1, c2], credit_data):
+        with col:
+            st.metric(item["name"], f"${item['value']:,.2f}", delta=f"{item['change_pct']:+.2f}%")
+ 
+    hyg_change = credit_data[0]["change_pct"]
+    tlt_change = credit_data[1]["change_pct"]
+    if hyg_change < 0 and tlt_change > 0:
+        st.warning("⚠️ 위험자산 회피 신호: 회사채(HYG) 약세 + 국채(TLT) 강세 — 시장이 안전자산을 선호하는 중이에요.")
+    elif hyg_change > 0 and tlt_change < 0:
+        st.success("✅ 위험자산 선호 신호: 회사채(HYG) 강세 + 국채(TLT) 약세 — 시장이 위험을 감수하려는 분위기예요.")
+    else:
+        st.info("ℹ️ 특별한 쏠림 없이 같이 움직이는 중이에요.")
+else:
+    st.warning("신용 스프레드 데이터를 가져오지 못했어요.")
+    
 st.subheader("📈 주식 기술적 분석 및 매매 신호 스캐너")
 
 # 1. 상단 제어 영역
