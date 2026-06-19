@@ -8,32 +8,32 @@ import plotly.graph_objects as go
 st.set_page_config(layout="wide", page_title="주식 전략 분석기")
 st.title("📈 주식 기술적 분석 및 매매 신호 스캐너")
 
-# 1. 사이드바 설정
-st.sidebar.header("⚙️ 분석 설정")
-ticker_input = st.sidebar.text_input("종목 티커 (예: 005930.KS)", "034020.KS")
+# 1. 상단 제어 영역 (사이드바 제거 후 배치)
+st.markdown("---")
+col1, col2, col3 = st.columns([2, 1, 1])
+with col1:
+    ticker_input = st.text_input("종목 티커 입력 (예: 005930.KS)", "034020.KS")
+with col2:
+    period_kr = st.selectbox("데이터 기간", ["1개월", "3개월", "6개월", "1년"])
+with col3:
+    interval_kr = st.selectbox("봉 단위", ["일봉", "60분봉", "15분봉"])
 
+st.markdown("##### 🛡️ 전략 설정")
+col_s1, col_s2, col_s3, col_s4 = st.columns(4)
+with col_s1: USE_TREND_FILTER = st.checkbox("정배열 필터", False)
+with col_s2: USE_MACD = st.checkbox("MACD 골든크로스", True)
+with col_s3: USE_BOLLINGER = st.checkbox("볼린저 밴드 돌파", True)
+with col_s4: USE_VOLUME_SPIKE = st.checkbox("거래량 폭발 필터", True)
+st.markdown("---")
+
+# 데이터 매핑
 period_map = {"1개월": "1mo", "3개월": "3mo", "6개월": "6mo", "1년": "1y"}
 interval_map = {"일봉": "1d", "60분봉": "60m", "15분봉": "15m"}
-
-period_kr = st.sidebar.selectbox("데이터 기간", list(period_map.keys()))
-interval_kr = st.sidebar.selectbox("봉 단위", list(interval_map.keys()))
-
-st.sidebar.header("🛡️ 전략 제어 스위치")
-USE_TREND_FILTER = st.sidebar.checkbox("정배열 필터", False)
-USE_MACD = st.sidebar.checkbox("MACD 골든크로스", True)
-USE_BOLLINGER = st.sidebar.checkbox("볼린저 밴드 돌파", True)
-USE_VOLUME_SPIKE = st.sidebar.checkbox("거래량 폭발 필터", True)
 
 # 2. 데이터 가져오기
 try:
     stock = yf.Ticker(ticker_input)
-    info = stock.info
-    company_name = info.get('longName', '알 수 없는 종목')
-    st.subheader(f"종목: {company_name} ({ticker_input})")
-    
     df = stock.history(period=period_map[period_kr], interval=interval_map[interval_kr])
-    
-    # 시간대 변환 및 포맷팅
     df.index = df.index.tz_convert('Asia/Seoul')
     if interval_map[interval_kr] == "1d":
         df.index = df.index.strftime('%Y-%m-%d')
@@ -60,86 +60,30 @@ df["signal"] = 0
 cond_macd_gold = (df["MACD"] > df["MACD_Signal"]) & (df["MACD"].shift(1) <= df["MACD_Signal"].shift(1))
 cond_bb_breakout = (df["Close"] > df["BB_Upper"]) & (df["Close"].shift(1) <= df["BB_Upper"].shift(1))
 cond_volume_burst = df["Volume"] > (df["Vol_MA5"].shift(1) * 1.5)
-
 buy_cond = pd.Series(True, index=df.index)
 if USE_MACD: buy_cond &= cond_macd_gold
 if USE_BOLLINGER: buy_cond &= cond_bb_breakout
 if USE_VOLUME_SPIKE: buy_cond &= cond_volume_burst
 if USE_TREND_FILTER: buy_cond &= (df["MA20"] > df["MA60"])
-
 df.loc[buy_cond, "signal"] = 1
 df.loc[df["Close"] < df["MA20"], "signal"] = -1
 df["신호"] = df["signal"].map({1: "매수", -1: "매도", 0: "대기"})
 
 # 5. 화면 출력
-rename_dict = {
-    "Close": "종가", "tenkan_sen": "전환선", "Volume": "거래량", 
-    "Vol_MA5": "5일거래량평균", "RSI": "RSI"
-}
+st.markdown("##### 📊 매매 신호 발생 내역")
+st.dataframe(df.rename(columns={"Close":"종가"})[df["signal"] != 0][["종가", "신호"]].tail(10), use_container_width=True)
 
-st.subheader("📊 매매 신호 발생 내역")
-st.dataframe(df.rename(columns=rename_dict)[df["signal"] != 0][["종가", "거래량", "신호"]].tail(10), use_container_width=True)
-
-st.subheader("📈 시세 및 거래량 차트")
-
-# 거래량 막대
+st.markdown("##### 📈 시세 및 거래량 차트")
 st.bar_chart(df["Volume"].tail(50))
-
-# 캔들 차트 그리기 바로 윗줄에 추가하세요
-# 1. 색상 결정 컬럼 생성 (True면 상승, False면 하락)
-df['is_increasing'] = df['Close'] >= df['Open']
-
-# 1. 비어있는 값 제거 (가장 중요)
 df = df.dropna(subset=['Open', 'High', 'Low', 'Close'])
-
-# 2. 시가/종가 강제 재정렬
-# 혹시라도 데이터가 꼬였을 수 있으니 시가와 종가가 확실히 비교되도록 합니다.
-
-# 2. 색상 리스트 생성
-colors = ['red' if x else 'blue' for x in df['is_increasing'].tail(50)]
-
-# 3. 캔들스틱 생성 시 line_color 사용
-fig = go.Figure(data=[go.Candlestick(
-    x=df.tail(50).index,
-    open=df.tail(50)['Open'],
-    high=df.tail(50)['High'],
-    low=df.tail(50)['Low'],
-    close=df.tail(50)['Close'],
-    # 🔴 상승일 땐 빨간색, 하락일 땐 파란색으로 개별 지정
-    increasing_line_color='red',
-    decreasing_line_color='blue',
-    name='시세'
-)])
-# 전환선 추가 (add_trace 사용)
-fig.add_trace(go.Scatter(
-    x=df.tail(50).index, 
-    y=df.tail(50)['tenkan_sen'], 
-    mode='lines', 
-    name='전환선', 
-    line=dict(color='orange', width=2)
-))
-
-# 레이아웃 설정
-fig.update_layout(xaxis_rangeslider_visible=False, height=500)
+fig = go.Figure(data=[go.Candlestick(x=df.tail(50).index, open=df.tail(50)['Open'], high=df.tail(50)['High'], low=df.tail(50)['Low'], close=df.tail(50)['Close'], increasing_line_color='red', decreasing_line_color='blue')])
+fig.add_trace(go.Scatter(x=df.tail(50).index, y=df.tail(50)['tenkan_sen'], mode='lines', name='전환선', line=dict(color='orange', width=2)))
+fig.update_layout(xaxis_rangeslider_visible=False, height=400)
 st.plotly_chart(fig, use_container_width=True)
 
-
-# 3. 상세 정보는 '표'로 확인 (여기가 팩트입니다)
-st.subheader("📋 가격 상세 정보 (양봉/음봉 구분)")
-
-# 1. 색상 로직을 적용한 새로운 열(Column)을 데이터프레임에 아예 만들어버립니다.
-# 스타일 함수를 거치지 않고, 데이터프레임 자체에 정보를 넣는 방식입니다.
-df_detail = df.tail(10)[["Open", "High", "Low", "Close"]].rename(columns={
-    "Open": "시가", "High": "고가", "Low": "저가", "Close": "종가"
-})
-
-# 2. '상태' 열을 추가하여 양봉/음봉을 명시합니다. (이게 가장 안전합니다)
-df_detail['상태'] = df_detail.apply(lambda row: '▲ 양봉' if row['종가'] > row['시가'] else ('▼ 음봉' if row['종가'] < row['시가'] else '— 보합'), axis=1)
-
-# 3. 데이터프레임 출력
-st.dataframe(df_detail, use_container_width=True)
-
-# [신규 추가] 최근 10일 상세 지표 출력
-st.subheader("📋 최근 10일 상세 데이터")
-recent_df = df.tail(10).rename(columns=rename_dict)
-st.dataframe(recent_df[["종가", "전환선", "거래량", "5일거래량평균", "RSI"]], use_container_width=True)
+# 6. 최근 10일 상세 데이터 (매수/매도 신호 포함)
+st.markdown("##### 📋 최근 10일 상세 지표 및 매매 신호")
+recent_df = df.tail(10).copy()
+recent_df['상태'] = recent_df.apply(lambda row: '▲ 양봉' if row['Close'] > row['Open'] else ('▼ 음봉' if row['Close'] < row['Open'] else '— 보합'), axis=1)
+display_df = recent_df.rename(columns={"Open":"시가", "Close":"종가", "tenkan_sen":"전환선", "Volume":"거래량", "RSI":"RSI"})
+st.dataframe(display_df[["시가", "종가", "거래량", "RSI", "상태", "신호"]], use_container_width=True)
