@@ -89,7 +89,20 @@ df["신호"] = df["signal"].map({1: "매수", -1: "매도", 0: "-"})
 
 # 5. 화면 출력
 st.markdown("##### 📊 매매 신호 발생 내역")
-st.dataframe(df.rename(columns={"Close":"종가"})[df["signal"] != 0][["종가", "신호"]].tail(10), use_container_width=True)
+
+rename_signal_dict = {
+    "Close": "종가",
+    "tenkan_sen": "전환선",
+    "Volume": "거래량",
+    "Vol_MA5": "5일거래량",
+    "RSI": "RSI",
+    "신호": "신호"
+}
+
+st.dataframe(
+    df.rename(columns=rename_signal_dict)[df["signal"] != 0][["종가", "전환선", "거래량", "5일거래량", "RSI", "신호"]].tail(10), 
+    use_container_width=True
+)
 
 st.markdown("##### 📈 시세 및 거래량 차트")
 st.bar_chart(df["Volume"].tail(50))
