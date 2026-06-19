@@ -55,7 +55,11 @@ exp12, exp26 = df["Close"].ewm(span=12).mean(), df["Close"].ewm(span=26).mean()
 df["MACD"] = exp12 - exp26
 df["MACD_Signal"] = df["MACD"].ewm(span=9).mean()
 df["Vol_MA5"] = df["Volume"].rolling(5).mean()
-df["RSI"] = 100 - (100 / (1 + (df["Close"].diff().clip(lower=0).rolling(14).mean() / (-df["Close"].diff().clip(upper=0).rolling(14).mean() + 1e-9))))
+delta = df["Close"].diff()
+avg_gain = delta.clip(lower=0).rolling(14).mean()
+avg_loss = (-delta.clip(upper=0)).rolling(14).mean()
+RS = avg_gain / (avg_loss + 1e-9)  # 0으로 나누기 방지는 분모(평균 하락폭)에만 적용
+df["RSI"] = 100 - (100 / (1 + RS))
 
 # 일목균형표 계산
 df["tenkan_sen"] = (df["High"].rolling(9).max() + df["Low"].rolling(9).min()) / 2
@@ -80,9 +84,15 @@ if USE_TREND_FILTER: buy_cond &= (df["MA20"] > df["MA60"])
 if USE_ICHIMOKU_CLOUD: buy_cond &= cond_above_cloud # 구름대 필터 적용
 
 df.loc[buy_cond, "signal"] = 1
-# 매도 조건: 이동평균선 데드크로스 또는 구름대 하향 이탈
-sell_cond = (df["Close"] < df["MA20"])
-if USE_ICHIMOKU_CLOUD: sell_cond |= (df["Close"] < df["Cloud_Bottom"])
+# 매도 조건: 매수와 대칭되는 무게감을 갖도록 "추세/모멘텀 전환" 신호로 구성
+# (기존 '종가 < MA20'은 너무 자주 발생해 신호로서 의미가 약했음)
+cond_macd_dead = (df["MACD"] < df["MACD_Signal"]) & (df["MACD"].shift(1) >= df["MACD_Signal"].shift(1))  # MACD 데드크로스
+cond_ma_dead = (df["MA20"] < df["MA60"]) & (df["MA20"].shift(1) >= df["MA60"].shift(1))  # 이동평균 데드크로스 (진짜 추세전환)
+cond_below_cloud = df["Close"] < df["Cloud_Bottom"]  # 구름대 하향 이탈
+
+# 매도 신호 = 모멘텀 전환(MACD 데드크로스) 또는 추세 전환(MA 데드크로스) 중 하나라도 발생
+sell_cond = cond_macd_dead | cond_ma_dead
+if USE_ICHIMOKU_CLOUD: sell_cond |= cond_below_cloud
 df.loc[sell_cond, "signal"] = -1
 
 df["신호"] = df["signal"].map({1: "매수", -1: "매도", 0: "-"})
