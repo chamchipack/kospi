@@ -25,18 +25,25 @@ def get_macro_data():
     results = []
     for name, ticker in macro_tickers.items():
         try:
-            hist = yf.Ticker(ticker).history(period="5d")
+            # period를 10일로 넉넉하게 받아서, 최근 1~2일 데이터가 비어도 직전 유효값을 쓸 수 있게 함
+            hist = yf.Ticker(ticker).history(period="10d")
+            # 종가(Close)가 실제로 존재하는 행만 남기기 (NaN 행 제거)
+            hist = hist.dropna(subset=["Close"])
             if hist.empty or len(hist) < 2:
+                results.append({"name": name, "value": None, "change_pct": None})
                 continue
             current = hist["Close"].iloc[-1]
             prev = hist["Close"].iloc[-2]
             change_pct = (current - prev) / prev * 100
             results.append({"name": name, "value": current, "change_pct": change_pct})
         except Exception:
-            continue
+            results.append({"name": name, "value": None, "change_pct": None})
     return results
  
 macro_data = get_macro_data()
+# 데이터가 없는 항목은 화면에 표시하지 않고 따로 안내
+macro_data_valid = [d for d in macro_data if d["value"] is not None]
+macro_data_failed = [d["name"] for d in macro_data if d["value"] is None]
  
 st.markdown("---")
 st.markdown("##### 🌍 오늘의 시장 환경")
@@ -46,7 +53,7 @@ display_mode = st.radio("표시 방식", ["흘러가는 티커", "고정 카드"
 if display_mode == "흘러가는 티커":
     # ----- 주식 전광판 스타일 스크롤링 티커 (HTML/CSS 직접 삽입) -----
     ticker_items_html = ""
-    for item in macro_data:
+    for item in macro_data_valid:
         color = "#d62728" if item["change_pct"] >= 0 else "#1f77b4"  # 상승 빨강, 하락 파랑
         arrow = "▲" if item["change_pct"] >= 0 else "▼"
         ticker_items_html += f"""
@@ -92,7 +99,7 @@ if display_mode == "흘러가는 티커":
 else:
     # ----- 고정 카드 버전 (작은 글씨, 화면 상단에 깔끔하게) -----
     cols = st.columns(5)
-    for idx, item in enumerate(macro_data):
+    for idx, item in enumerate(macro_data_valid):
         card_color = "#d62728" if item["change_pct"] >= 0 else "#1f77b4"
         card_arrow = "▲" if item["change_pct"] >= 0 else "▼"
         with cols[idx % 5]:
@@ -103,6 +110,9 @@ else:
                 f"{card_arrow}{abs(item['change_pct']):.2f}%</span></div>",
                 unsafe_allow_html=True
             )
+ 
+if macro_data_failed:
+    st.caption(f"⚠️ 일시적으로 데이터를 못 가져온 항목: {', '.join(macro_data_failed)} (잠시 후 새로고침하면 복구될 수 있어요)")
  
 # ============================================================
 # 💡 [추가] 신용 스프레드 — 시장이 진짜로 불안한지 보는 지표
@@ -123,27 +133,30 @@ def get_credit_spread_data():
     results = []
     for name, ticker in tickers.items():
         try:
-            hist = yf.Ticker(ticker).history(period="5d")
+            hist = yf.Ticker(ticker).history(period="10d")
+            hist = hist.dropna(subset=["Close"])
             if hist.empty or len(hist) < 2:
+                results.append({"name": name, "value": None, "change_pct": None})
                 continue
             current = hist["Close"].iloc[-1]
             prev = hist["Close"].iloc[-2]
             change_pct = (current - prev) / prev * 100
             results.append({"name": name, "value": current, "change_pct": change_pct})
         except Exception:
-            continue
+            results.append({"name": name, "value": None, "change_pct": None})
     return results
  
 credit_data = get_credit_spread_data()
+credit_data_valid = [d for d in credit_data if d["value"] is not None]
  
-if len(credit_data) == 2:
+if len(credit_data_valid) == 2:
     c1, c2 = st.columns(2)
-    for col, item in zip([c1, c2], credit_data):
+    for col, item in zip([c1, c2], credit_data_valid):
         with col:
             st.metric(item["name"], f"${item['value']:,.2f}", delta=f"{item['change_pct']:+.2f}%")
  
-    hyg_change = credit_data[0]["change_pct"]
-    tlt_change = credit_data[1]["change_pct"]
+    hyg_change = credit_data_valid[0]["change_pct"]
+    tlt_change = credit_data_valid[1]["change_pct"]
     if hyg_change < 0 and tlt_change > 0:
         st.warning("⚠️ 위험자산 회피 신호: 회사채(HYG) 약세 + 국채(TLT) 강세 — 시장이 안전자산을 선호하는 중이에요.")
     elif hyg_change > 0 and tlt_change < 0:
@@ -151,8 +164,7 @@ if len(credit_data) == 2:
     else:
         st.info("ℹ️ 특별한 쏠림 없이 같이 움직이는 중이에요.")
 else:
-    st.warning("신용 스프레드 데이터를 가져오지 못했어요.")
-    
+    st.warning("신용 스프레드 데이터를 일시적으로 가져오지 못했어요. 잠시 후 새로고침해보세요.")
 st.subheader("📈 주식 기술적 분석 및 매매 신호 스캐너")
 
 # 1. 상단 제어 영역
