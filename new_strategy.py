@@ -100,7 +100,15 @@ df["신호"] = df["signal"].map({1: "매수", -1: "매도", 0: "-"})
 # 5. 화면 출력
 st.markdown("##### 📊 매매 신호 발생 내역")
 
-# 지표가 NaN인 경우 0으로 채워서 표에 출력되게 합니다.
+rename_signal_dict = {
+    "Close": "종가",
+    "tenkan_sen": "전환선",
+    "Volume": "거래량",
+    "Vol_MA5": "5일거래량",
+    "RSI": "RSI",
+    "신호": "신호"
+}
+
 df_display = df.rename(columns=rename_signal_dict).copy()
 df_display[['전환선', '거래량', '5일거래량', 'RSI']] = df_display[['전환선', '거래량', '5일거래량', 'RSI']].fillna(0)
 
