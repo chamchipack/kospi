@@ -457,9 +457,15 @@ df["신호"] = df["signal"].map({1: "매수", -1: "매도", 0: "-"})
 df["스퀴즈해제"] = cond_squeeze_release.map({True: "💥", False: ""})
 
 # ===== 9. 화면 표시용 인덱스 포맷 (계산이 다 끝난 뒤에만 문자열로 변환) =====
-if interval_map[interval_kr] == "1d":
+# if interval_map[interval_kr] == "1d":
+#     display_index = df.index.strftime('%Y-%m-%d')
+# else:
+#     display_index = df.index.strftime('%Y-%m-%d %H:%M')
+# interval_map[interval_kr]이 "1d"(일봉)이거나 "1w"(주봉)일 때는 날짜만 표시
+if interval_map[interval_kr] in ["1d", "1w"]:
     display_index = df.index.strftime('%Y-%m-%d')
 else:
+    # 60분봉, 15분봉 등 분봉 데이터일 때만 시간까지 표시
     display_index = df.index.strftime('%Y-%m-%d %H:%M')
 df_display = df.copy()
 df_display.index = display_index
