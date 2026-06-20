@@ -515,8 +515,6 @@ st.markdown("##### 📈 거래량")
 st.bar_chart(df_display["Volume"].tail(50))
 
 df_chart = df_display.dropna(subset=['Open', 'High', 'Low', 'Close'])
-tail_df = df_chart.tail(50)
-
 fig = go.Figure(data=[go.Candlestick(
     x=df_chart.tail(50).index, open=df_chart.tail(50)['Open'], high=df_chart.tail(50)['High'],
     low=df_chart.tail(50)['Low'], close=df_chart.tail(50)['Close'],
@@ -530,31 +528,6 @@ fig.update_layout(xaxis_rangeslider_visible=False, height=400)
 
 st.markdown("##### 📈 시세")
 st.plotly_chart(fig, use_container_width=True)
-
-st.markdown("##### 📊 MACD (추세 강도 및 크로스 수급)")
-
-# 1. MACD용 독립적인 Figure 생성
-fig_macd = go.Figure()
-
-# 2. MACD선 (빠른 선)과 Signal선 (느린 선) 추가
-fig_macd.add_trace(go.Scatter(x=tail_df.index, y=tail_df['macd'], mode='lines', name='MACD', line=dict(color='blue', width=1.5)))
-fig_macd.add_trace(go.Scatter(x=tail_df.index, y=tail_df['macd_signal'], mode='lines', name='Signal', line=dict(color='orange', width=1.5)))
-
-# 3. MACD 히스토그램 (Bar 차트 - 양수면 빨강, 음수면 파랑으로 시각화 효과)
-# 현재 데이터프레임의 히스토그램 컬럼명을 확인 후 맞춰주세요 (예: 'macd_hist' 또는 'macd_h')
-hist_colors = ['red' if val >= 0 else 'blue' for val in tail_df['macd_hist']]
-fig_macd.add_trace(go.Bar(x=tail_df.index, y=tail_df['macd_hist'], name='Histogram', marker_color=hist_colors, opacity=0.5))
-
-# 4. 레이아웃 깔끔하게 정리 (시세 차트와 날짜 축 동기화 느낌을 주기 위해 스타일 통일)
-fig_macd.update_layout(
-    xaxis_rangeslider_visible=False, 
-    height=250, # 보조지표이므로 주가 차트보다 세로 높이를 슬림하게 세팅
-    margin=dict(t=10, b=10), # 여백을 줄여 주가 차트와 이어지는 느낌 유도
-    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1) # 범례를 가로로 상단 배치
-)
-
-# 5. 스트리밋에 그리기
-st.plotly_chart(fig_macd, use_container_width=True)
 
 # ===== 시장 대비 상대강도 차트 (필터 켰을 때만 표시) =====
 if USE_RELATIVE_STRENGTH:
