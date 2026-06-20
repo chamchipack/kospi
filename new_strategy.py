@@ -515,6 +515,8 @@ st.markdown("##### 📈 거래량")
 st.bar_chart(df_display["Volume"].tail(50))
 
 df_chart = df_display.dropna(subset=['Open', 'High', 'Low', 'Close'])
+tail_df = df_chart.tail(50)
+
 fig = go.Figure(data=[go.Candlestick(
     x=df_chart.tail(50).index, open=df_chart.tail(50)['Open'], high=df_chart.tail(50)['High'],
     low=df_chart.tail(50)['Low'], close=df_chart.tail(50)['Close'],
