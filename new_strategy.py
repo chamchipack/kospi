@@ -180,46 +180,46 @@ st.markdown("##### 🛡️ 필터 설정")
 
 col_s1, col_s2, col_s3 = st.columns(3)
 with col_s1:
-    USE_TREND_FILTER = st.checkbox("정배열 필터", False)
+    USE_TREND_FILTER = st.checkbox("정배열 필터", applied_preset.get("trend", False))
     st.caption("MA20(20일 평균가)이 MA60(60일 평균가) 위에 있을 때만 매수 허용. "
                "단기 추세가 장기 추세보다 강할 때만 진입하므로, 하락장에서의 섣부른 매수를 줄여줘요. "
                "켜면 신호가 줄어드는 대신 추세 역행 매매를 막아줘요.")
 with col_s2:
-    USE_MACD = st.checkbox("MACD 골든크로스", True)
+    USE_MACD = st.checkbox("MACD 골든크로스", applied_preset.get("macd", True))
     st.caption("단기 추세선이 장기 추세선을 위로 돌파하는 순간(모멘텀 전환)을 포착해요. "
                "매수: 골든크로스 발생 시 진입 검토. 매도: 반대로 데드크로스 시 청산 검토. "
                "추세 전환 초입을 잡는 데 강하지만, 횡보장에서는 가짜 신호(휩소)가 잦아요.")
 with col_s3:
-    USE_BOLLINGER = st.checkbox("볼린저 밴드 돌파", False)
+    USE_BOLLINGER = st.checkbox("볼린저 밴드 돌파", applied_preset.get("bollinger", False))
     st.caption("주가가 평소 변동 범위(상단밴드)를 강하게 뚫고 올라갈 때 포착해요. "
                "매수: 상단 돌파 시 추세 가속 기대. 매도: 종가가 다시 MA20 아래로 내려오면 청산. "
                "변동성이 커지는 구간에서 효과적이에요.")
 
 col_s4, col_s5, col_s6 = st.columns(3)
 with col_s4:
-    USE_VOLUME_SPIKE = st.checkbox("거래량 폭발 필터", False)
+    USE_VOLUME_SPIKE = st.checkbox("거래량 폭발 필터", applied_preset.get("volume", False))
     st.caption("평소(5일 평균) 대비 거래량이 1.5배 이상 터졌을 때만 매수를 인정해요. "
                "거래량 없는 가격 움직임은 힘이 약해 되돌림 가능성이 높으므로, "
                "이 필터를 켜면 '진짜 힘 있는' 신호만 골라낼 수 있어요.")
 with col_s5:
-    USE_RSI_FILTER = st.checkbox("RSI 필터", False)
+    USE_RSI_FILTER = st.checkbox("RSI 필터", applied_preset.get("rsi", False))
     st.caption("RSI 35 이하(과매도) 구간에서의 반등 매수를 보완하고, "
                "RSI 75 이상(과매수) 구간에서는 조기 청산을 유도해요. "
                "매수: 과매도+장기추세 유지 시 저점 매수 기회. 매도: 과매수 구간 진입 시 차익실현 검토.")
 with col_s6:
-    USE_ICHIMOKU_CLOUD = st.checkbox("일목구름대 필터", False)
+    USE_ICHIMOKU_CLOUD = st.checkbox("일목구름대 필터", applied_preset.get("ichimoku", False))
     st.caption("주가가 구름대(저항/지지 영역) 위에 있을 때만 매수를 허용하는 대세 하락장 방어 필터예요. "
                "매수: 구름 위 안착 시에만 진입. 매도: 구름 아래로 이탈하면 대세 하락 신호로 보고 무조건 청산.")
 
 col_s7, col_s8 = st.columns(2)
 with col_s7:
-    USE_ATR_STOP = st.checkbox("ATR 변동성 기반 손절선 표시", True)
+    USE_ATR_STOP = st.checkbox("ATR 변동성 기반 손절선 표시", applied_preset.get("atr", True))
     st.caption("그 종목이 평소(14일) 하루에 평균적으로 얼마나 움직이는지(ATR)를 기준으로 "
                "손절가를 계산해요. 변동성이 큰 종목은 손절선을 넓게, 작은 종목은 좁게 잡아 "
                "'정상적인 출렁임'에 불필요하게 손절당하는 걸 막아줘요. "
                "매매 원칙: 진입가에서 ATR×2 만큼 하락하면 기계적으로 손절하는 걸 권장해요.")
 with col_s8:
-    USE_RELATIVE_STRENGTH = st.checkbox("시장 대비 상대강도 필터", False)
+    USE_RELATIVE_STRENGTH = st.checkbox("시장 대비 상대강도 필터", applied_preset.get("relative_strength", False))
     st.caption("KOSPI 지수 대비 이 종목이 더 잘 가고 있는지(상대강도)를 비교해요. "
                "매수: 상대강도가 우상향 중일 때 = 시장이 빠져도 버티거나 시장보다 더 오르는 '진짜 힘 있는' 종목. "
                "매도: 상대강도가 꺾이면 = 시장 따라 출렁이기만 하는 종목일 수 있어 신뢰도 하락.")
