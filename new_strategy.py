@@ -399,36 +399,82 @@ cond_volume_burst = df["Volume"] > (df["Vol_MA5"].shift(1) * 1.5)
 cond_rsi_overbought = df["RSI"] >= 70
 cond_rsi_oversold   = df["RSI"] <= 35
 
+
 # ----- [A] 매수 조건 조립 -----
-if USE_TREND_FILTER:
-    final_buy_condition = df["MA20"] > df["MA60"]
-else:
-    final_buy_condition = pd.Series(True, index=df.index)
+# if USE_TREND_FILTER:
+#     final_buy_condition = df["MA20"] > df["MA60"]
+# else:
+#     final_buy_condition = pd.Series(True, index=df.index)
 
-if USE_MACD and USE_BOLLINGER:
-    trigger = cond_macd_gold | cond_bb_breakout
-    filter_cond = (df["MACD"] > df["MACD_Signal"]) & (df["Close"] >= df["MA20"])
-    final_buy_condition = final_buy_condition & trigger & filter_cond
-elif USE_MACD:
-    final_buy_condition = final_buy_condition & cond_macd_gold
-elif USE_BOLLINGER:
-    final_buy_condition = final_buy_condition & cond_bb_breakout
-else:
-    final_buy_condition = cond_ma_gold
+# if USE_MACD and USE_BOLLINGER:
+#     trigger = cond_macd_gold | cond_bb_breakout
+#     filter_cond = (df["MACD"] > df["MACD_Signal"]) & (df["Close"] >= df["MA20"])
+#     final_buy_condition = final_buy_condition & trigger & filter_cond
+# elif USE_MACD:
+#     final_buy_condition = final_buy_condition & cond_macd_gold
+# elif USE_BOLLINGER:
+#     final_buy_condition = final_buy_condition & cond_bb_breakout
+# else:
+#     final_buy_condition = cond_ma_gold
 
-if USE_VOLUME_SPIKE:
-    final_buy_condition = final_buy_condition & cond_volume_burst
+# if USE_VOLUME_SPIKE:
+#     final_buy_condition = final_buy_condition & cond_volume_burst
 
+# if USE_RSI_FILTER:
+#     final_buy_condition = final_buy_condition | (cond_rsi_oversold & (df["Close"] >= df["MA60"]))
+
+# if USE_ICHIMOKU_CLOUD:
+#     cond_above_cloud = df["Close"] > df["Cloud_Top"]
+#     final_buy_condition = final_buy_condition & cond_above_cloud
+
+# if USE_RELATIVE_STRENGTH:
+#     final_buy_condition = final_buy_condition & cond_rs_rising
+
+# df.loc[final_buy_condition, "signal"] = 1
+# ----- [A] 매수 조건 조립 (트리거 & 필터 분리형으로 교정) -----
+
+# 1. 트리거(진입 신호) 모음집 - 이 중 하나라도 신호가 오면 출발 준비 (OR 연산)
+buy_triggers = []
+
+if USE_MACD:
+    buy_triggers.append(cond_macd_gold)       # MACD 골든크로스 시점
+if USE_BOLLINGER:
+    buy_triggers.append(cond_bb_breakout)     # 볼린저밴드 상단 돌파 시점
 if USE_RSI_FILTER:
-    final_buy_condition = final_buy_condition | (cond_rsi_oversold & (df["Close"] >= df["MA60"]))
+    buy_triggers.append(cond_rsi_oversold)     # RSI 과매도 바닥 구간 진입 시점
 
+# 사용자가 체크박스를 하나도 안 켰다면, 기본 시스템으로 '이동평균선 골든크로스'를 씁니다.
+if not buy_triggers:
+    final_buy_trigger = cond_ma_gold
+else:
+    # 켜진 트리거들 중 하나라도 만족(True)하면 신호 발생
+    final_buy_trigger = pd.concat(buy_triggers, axis=1).any(axis=1)
+
+
+# 2. 필터(안전장치 자격요건) 모음집 - 켜놓은 조건은 무조건 '동시에' 만족해야 함 (AND 연산)
+buy_filters = []
+
+if USE_TREND_FILTER:
+    buy_filters.append(df["MA20"] > df["MA60"])       # 정배열 상태인가?
+if USE_VOLUME_SPIKE:
+    buy_filters.append(cond_volume_burst)             # 거래량이 터진 상태인가?
 if USE_ICHIMOKU_CLOUD:
-    cond_above_cloud = df["Close"] > df["Cloud_Top"]
-    final_buy_condition = final_buy_condition & cond_above_cloud
-
+    buy_filters.append(df["Close"] > df["Cloud_Top"]) # 주가가 일목구름 위에 있는가?
 if USE_RELATIVE_STRENGTH:
-    final_buy_condition = final_buy_condition & cond_rs_rising
+    buy_filters.append(cond_rs_rising)                # 시장 대비 상대강도가 우상향인가?
 
+# 켜진 필터가 없다면 항상 통과(True), 있다면 모든 필터를 만족해야 통과
+if buy_filters:
+    final_buy_filter = pd.concat(buy_filters, axis=1).all(axis=1)
+else:
+    final_buy_filter = pd.Series(True, index=df.index)
+
+
+# 3. 최종 결합: 신호등(트리거)이 켜졌고, 자격요건(필터)을 모두 통과했을 때만 최종 매수!
+final_buy_condition = final_buy_trigger & final_buy_filter
+
+# ---------------------------------------------------
+# (아래 줄은 기존 코드와 연결되는 부분입니다)
 df.loc[final_buy_condition, "signal"] = 1
 
 # ----- [B] 매도 조건 조립 -----
