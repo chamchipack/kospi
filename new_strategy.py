@@ -179,38 +179,21 @@ with col3:
 st.markdown("##### 🛡️ 필터 설정")
 
 col_s1, col_s2, col_s3 = st.columns(3)
-
 with col_s1:
-    # 1. 체크박스와 버튼을 나란히 배치하기 위해 작은 컬럼 생성
-    c1, c2 = st.columns([0.8, 0.2]) 
-    with c1:
-        USE_TREND_FILTER = st.checkbox("정배열 필터", False)
-    with c2:
-        # 2. 버튼 모양의 팝오버 배치
-        with st.popover("ℹ️"):
-            st.caption("MA20(20일 평균가)이 MA60(60일 평균가) 위에 있을 때만 매수 허용. "
-                       "단기 추세가 장기 추세보다 강할 때만 진입하므로, 하락장에서의 섣부른 매수를 줄여줘요. "
-                       "켜면 신호가 줄어드는 대신 추세 역행 매매를 막아줘요.")
-
+    USE_TREND_FILTER = st.checkbox("정배열 필터", False)
+    st.caption("MA20(20일 평균가)이 MA60(60일 평균가) 위에 있을 때만 매수 허용. "
+               "단기 추세가 장기 추세보다 강할 때만 진입하므로, 하락장에서의 섣부른 매수를 줄여줘요. "
+               "켜면 신호가 줄어드는 대신 추세 역행 매매를 막아줘요.")
 with col_s2:
-    c1, c2 = st.columns([0.8, 0.2])
-    with c1:
-        USE_MACD = st.checkbox("MACD 골든크로스", True)
-    with c2:
-        with st.popover("ℹ️"):
-            st.caption("단기 추세선이 장기 추세선을 위로 돌파하는 순간(모멘텀 전환)을 포착해요. "
-                       "매수: 골든크로스 발생 시 진입 검토. 매도: 반대로 데드크로스 시 청산 검토. "
-                       "추세 전환 초입을 잡는 데 강하지만, 횡보장에서는 가짜 신호(휩소)가 잦아요.")
-
+    USE_MACD = st.checkbox("MACD 골든크로스", True)
+    st.caption("단기 추세선이 장기 추세선을 위로 돌파하는 순간(모멘텀 전환)을 포착해요. "
+               "매수: 골든크로스 발생 시 진입 검토. 매도: 반대로 데드크로스 시 청산 검토. "
+               "추세 전환 초입을 잡는 데 강하지만, 횡보장에서는 가짜 신호(휩소)가 잦아요.")
 with col_s3:
-    c1, c2 = st.columns([0.8, 0.2])
-    with c1:
-        USE_BOLLINGER = st.checkbox("볼린저 밴드 돌파", False)
-    with c2:
-        with st.popover("ℹ️"):
-            st.caption("주가가 평소 변동 범위(상단밴드)를 강하게 뚫고 올라갈 때 포착해요. "
-                       "매수: 상단 돌파 시 추세 가속 기대. 매도: 종가가 다시 MA20 아래로 내려오면 청산. "
-                       "변동성이 커지는 구간에서 효과적이에요.")
+    USE_BOLLINGER = st.checkbox("볼린저 밴드 돌파", False)
+    st.caption("주가가 평소 변동 범위(상단밴드)를 강하게 뚫고 올라갈 때 포착해요. "
+               "매수: 상단 돌파 시 추세 가속 기대. 매도: 종가가 다시 MA20 아래로 내려오면 청산. "
+               "변동성이 커지는 구간에서 효과적이에요.")
 
 col_s4, col_s5, col_s6 = st.columns(3)
 with col_s4:
