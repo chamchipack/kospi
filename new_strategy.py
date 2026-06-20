@@ -174,7 +174,7 @@ with col1:
 with col2:
     period_kr = st.selectbox("데이터 기간", ["1개월", "3개월", "6개월", "1년"], index=3)
 with col3:
-    interval_kr = st.selectbox("봉 단위", ["일봉", "주봉", "60분봉", "15분봉"])
+    interval_kr = st.selectbox("봉 단위", ["일봉", "60분봉", "15분봉"])
 
 # ============================================================
 # 💡 [추가] 추천 필터 조합 — 모달로 한번에 적용
@@ -290,7 +290,7 @@ st.markdown("---")
 
 # 데이터 매핑
 period_map = {"1개월": "1mo", "3개월": "3mo", "6개월": "6mo", "1년": "1y"}
-interval_map = {"주봉": "1w", "일봉": "1d", "60분봉": "60m", "15분봉": "15m"}
+interval_map = {"일봉": "1d", "60분봉": "60m", "15분봉": "15m"}
 
 # 2. 데이터 가져오기
 # [핵심] 인덱스를 문자열로 바꾸지 않음 -> rolling/shift 계산이 시간 순서 기준으로 정확히 동작
@@ -457,15 +457,9 @@ df["신호"] = df["signal"].map({1: "매수", -1: "매도", 0: "-"})
 df["스퀴즈해제"] = cond_squeeze_release.map({True: "💥", False: ""})
 
 # ===== 9. 화면 표시용 인덱스 포맷 (계산이 다 끝난 뒤에만 문자열로 변환) =====
-# if interval_map[interval_kr] == "1d":
-#     display_index = df.index.strftime('%Y-%m-%d')
-# else:
-#     display_index = df.index.strftime('%Y-%m-%d %H:%M')
-# interval_map[interval_kr]이 "1d"(일봉)이거나 "1w"(주봉)일 때는 날짜만 표시
-if interval_map[interval_kr] in ["1d", "1w"]:
+if interval_map[interval_kr] == "1d":
     display_index = df.index.strftime('%Y-%m-%d')
 else:
-    # 60분봉, 15분봉 등 분봉 데이터일 때만 시간까지 표시
     display_index = df.index.strftime('%Y-%m-%d %H:%M')
 df_display = df.copy()
 df_display.index = display_index
