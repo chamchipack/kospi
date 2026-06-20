@@ -525,6 +525,8 @@ fig.add_trace(go.Scatter(x=df_chart.tail(50).index, y=df_chart.tail(50)['Stop_Lo
 if USE_ICHIMOKU_CLOUD:
     fig.add_trace(go.Scatter(x=df_chart.tail(50).index, y=df_chart.tail(50)['Cloud_Top'], mode='lines', name='구름상단', line=dict(color='gray', width=1, dash='dot')))
 fig.update_layout(xaxis_rangeslider_visible=False, height=400)
+
+st.markdown("##### 📈 시세 및 거래량 차트")
 st.plotly_chart(fig, use_container_width=True)
 
 # ===== 시장 대비 상대강도 차트 (필터 켰을 때만 표시) =====
