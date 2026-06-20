@@ -176,6 +176,68 @@ with col2:
 with col3:
     interval_kr = st.selectbox("봉 단위", ["일봉", "60분봉", "15분봉"])
 
+# ============================================================
+# 💡 [추가] 추천 필터 조합 — 모달로 한번에 적용
+# ============================================================
+# 개념: 8개 필터를 매번 일일이 켜고 끄는 대신, 상황별로 검증된
+#       조합을 버튼 하나로 적용할 수 있게 함. 모달(팝업)에서
+#       조합을 고르면 체크박스 상태가 한번에 세팅됨.
+
+# 조합 프리셋 정의
+FILTER_PRESETS = {
+    "추세 추종 (기본형)": {
+        "trend": True, "macd": True, "bollinger": False,
+        "volume": True, "rsi": False, "ichimoku": False,
+        "atr": True, "relative_strength": False,
+        "설명": "큰 흐름이 상승 중인 종목만 거른 뒤(정배열), MACD 골든크로스로 진입 타이밍을 잡아요. "
+                "거래량으로 가짜 신호를 줄이고 ATR로 손절 기준을 같이 봐요. "
+                "신호는 적지만 신뢰도가 높은 가장 안전한 조합이에요. 추세가 뚜렷한 장에 적합해요."
+    },
+    "변동성 돌파 (모멘텀 추격형)": {
+        "trend": False, "macd": False, "bollinger": True,
+        "volume": True, "rsi": False, "ichimoku": False,
+        "atr": True, "relative_strength": False,
+        "설명": "볼린저 상단을 강하게 뚫는 순간을 거래량으로 검증해서 빠르게 잡는 조합이에요. "
+                "정배열은 일부러 빼는데, 추세 초입엔 장기 이동평균이 못 따라온 경우가 많아서예요. "
+                "막 터지기 시작하는 종목을 추격할 때 적합하고, 추격매수라 ATR 손절은 필수예요."
+    },
+    "저점 매수 (반등 확인형)": {
+        "trend": False, "macd": True, "bollinger": False,
+        "volume": False, "rsi": True, "ichimoku": False,
+        "atr": True, "relative_strength": True,
+        "설명": "RSI 과매도 구간에서의 반등을 노리되, 시장보다 덜 빠지거나 더 빨리 회복하는 "
+                "'진짜 강한 종목'인지 상대강도로 검증해요. 여기에 MACD 골든크로스를 더해 "
+                "'그냥 많이 빠진 것'과 '바닥을 찍고 모멘텀이 꺾여 올라오는 것'을 구분해요. "
+                "심리적으로 어려운 조합이라 익숙해진 뒤 시도하는 걸 권해요."
+    },
+}
+
+if "preset_to_apply" not in st.session_state:
+    st.session_state.preset_to_apply = None
+
+st.markdown("##### 🎯 추천 필터 조합")
+
+@st.dialog("추천 필터 조합 선택")
+def show_preset_modal():
+    st.caption("상황에 맞는 조합을 고르면 아래 8개 필터가 한번에 세팅돼요.")
+    for preset_name, preset_values in FILTER_PRESETS.items():
+        with st.container(border=True):
+            st.markdown(f"**{preset_name}**")
+            st.caption(preset_values["설명"])
+            if st.button("이 조합 적용하기", key=f"apply_{preset_name}", use_container_width=True):
+                st.session_state.preset_to_apply = preset_name
+                st.rerun()
+
+if st.button("📋 추천 조합 보기", use_container_width=False):
+    show_preset_modal()
+
+# 모달에서 선택된 프리셋을 체크박스 기본값에 반영
+applied_preset = FILTER_PRESETS.get(st.session_state.preset_to_apply, {})
+if st.session_state.preset_to_apply:
+    st.success(f"✅ '{st.session_state.preset_to_apply}' 조합이 적용됐어요. 아래에서 개별 조정도 가능해요.")
+
+st.markdown("---")
+
 st.markdown("##### 🛡️ 필터 설정")
 
 col_s1, col_s2, col_s3 = st.columns(3)
