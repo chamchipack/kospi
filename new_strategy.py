@@ -21,6 +21,8 @@ def get_macro_data():
         "나스닥": "^IXIC",
         "나스닥 선물": "NQ=F",
         "필라델피아 반도체": "^SOX",
+        "마이크론: "MU",
+        "MSCI한국": "EWY"
     }
     results = []
     for name, ticker in macro_tickers.items():
