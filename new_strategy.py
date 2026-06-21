@@ -239,10 +239,7 @@ if st.session_state.preset_to_apply:
 
 st.markdown("---")
 
-USE_GAP_FILTER = st.checkbox("갭상승 유지 필터", False)
-st.caption("어제 종가보다 1% 이상 높게 출발(갭상승)했는데 장중에도 그 갭을 안 메우고 버티면 "
-           "신규 매수세가 강하다는 뜻이에요. 매수: 갭 유지 시 진입 검토. "
-           "매도 참고: 갭이 장중에 메워지면(전일 종가 아래로 떨어지면) 가짜 신호로 보고 보류해요.")
+
 
 st.markdown("##### 🛡️ 필터 설정")
 
@@ -279,7 +276,7 @@ with col_s6:
     st.caption("주가가 구름대(저항/지지 영역) 위에 있을 때만 매수를 허용하는 대세 하락장 방어 필터예요. "
                "매수: 구름 위 안착 시에만 진입. 매도: 구름 아래로 이탈하면 대세 하락 신호로 보고 무조건 청산.")
 
-col_s7, col_s8 = st.columns(2)
+col_s7, col_s8, col_s9 = st.columns(3)
 with col_s7:
     USE_ATR_STOP = st.checkbox("ATR 변동성 기반 손절선 표시", applied_preset.get("atr", True))
     st.caption("그 종목이 평소(14일) 하루에 평균적으로 얼마나 움직이는지(ATR)를 기준으로 "
@@ -291,7 +288,27 @@ with col_s8:
     st.caption("KOSPI 지수 대비 이 종목이 더 잘 가고 있는지(상대강도)를 비교해요. "
                "매수: 상대강도가 우상향 중일 때 = 시장이 빠져도 버티거나 시장보다 더 오르는 '진짜 힘 있는' 종목. "
                "매도: 상대강도가 꺾이면 = 시장 따라 출렁이기만 하는 종목일 수 있어 신뢰도 하락.")
+with col_s9:
+    USE_GAP_FILTER = st.checkbox("갭상승 유지 필터", False)
+    st.caption("어제 종가보다 1% 이상 높게 출발(갭상승)했는데 장중에도 그 갭을 안 메우고 버티면 "
+            "신규 매수세가 강하다는 뜻이에요. 매수: 갭 유지 시 진입 검토. "
+                "매도 참고: 갭이 장중에 메워지면(전일 종가 아래로 떨어지면) 가짜 신호로 보고 보류해요.")
 
+col_s10, col_s11, col_s12 = st.columns(3)
+with col_s10:
+    USE_ATR_SURGE = st.checkbox("ATR 급변 필터", False)
+    st.caption("평소(최근 5일 평균) 대비 오늘 변동성(ATR)이 30% 이상 갑자기 커지면 포착해요. "
+               "변동성이 급격히 커지는 시점은 큰 자금이 들어오기 시작하는 타이밍과 자주 겹쳐요. "
+               "매수: 다른 매수 신호와 같이 뜰 때 신뢰도를 높이는 보조 용도로 활용하세요.")
+with col_s11:
+    if interval_map[interval_kr] == "1d":
+        USE_MTF_FILTER = st.checkbox("멀티 타임프레임 확인", False)
+        st.caption("일봉에서 매수 신호가 떠도, 더 짧은 시간 단위(60분봉)의 최근 흐름도 같은 방향인지 "
+                   "같이 확인해요. 일봉은 좋은데 60분봉에서 막 꺾이는 중이면 타이밍이 안 좋을 수 있어요. "
+                   "매수: 일봉 신호 + 60분봉 흐름이 같은 방향일 때 신뢰도가 더 높아요.")
+    else:
+        USE_MTF_FILTER = False
+        st.caption("💡 멀티 타임프레임 확인은 '일봉' 선택 시에만 사용할 수 있어요.")
 st.markdown("---")
 
 # 데이터 매핑
@@ -307,6 +324,17 @@ try:
 
     df = stock.history(period=period_map[period_kr], interval=interval_map[interval_kr])
     df.index = df.index.tz_convert('Asia/Seoul')
+    # ===== 💡 [신규] 멀티 타임프레임 확인용 60분봉 데이터 추가 수집 =====
+# 일봉 신호가 떴을 때, 더 짧은 시간 단위(60분봉)에서도 같은 방향인지 확인하기 위함
+    mtf_bullish = None
+    if interval_map[interval_kr] == "1d" and USE_MTF_FILTER:
+        df_60m = stock.history(period="5d", interval="60m")
+        if not df_60m.empty:
+            df_60m.index = df_60m.index.tz_convert('Asia/Seoul')
+            df_60m["MA20_60m"] = df_60m["Close"].rolling(window=20).mean()
+            if len(df_60m) >= 20:
+                mtf_bullish = df_60m["Close"].iloc[-1] > df_60m["MA20_60m"].iloc[-1]
+
     pd.options.display.float_format = '{:.2f}'.format
 
     # 시장 대비 상대강도 필터를 위한 KOSPI 지수 데이터 (필요할 때만 호출)
@@ -317,6 +345,12 @@ try:
 except Exception as e:
     st.error("티커를 확인해주세요.")
     st.stop()
+
+if interval_map[interval_kr] == "1d" and USE_MTF_FILTER:
+    if mtf_bullish is None:
+        st.warning("60분봉 데이터가 부족해 멀티 타임프레임 확인이 어려워요.")
+    else:
+        st.caption(f"현재 60분봉 기준 흐름: {'🟢 상승 추세' if mtf_bullish else '🔴 하락/횡보 추세'}")
 
 # ===== 1. 기존 기술적 지표 계산 =====
 df["MA20"] = df["Close"].rolling(window=20).mean()
@@ -369,6 +403,12 @@ df["ATR"] = df["TR"].rolling(window=14).mean()
 
 # 손절가 = 종가 - (ATR × 2) : 평소 변동폭의 2배만큼 빠지면 손절 기준선으로 봄
 df["Stop_Loss"] = df["Close"] - (df["ATR"] * 2)
+
+# ===== 💡 [신규] ATR 급변 (변동성이 갑자기 커지기 시작하는 시점) =====
+# 오늘 ATR이 최근 5일 평균 ATR보다 30% 이상 커지면 "변동성 급등"으로 판단
+df["ATR_MA5"] = df["ATR"].rolling(window=5).mean()
+df["ATR_Surge_Pct"] = (df["ATR"] - df["ATR_MA5"]) / df["ATR_MA5"] * 100
+cond_atr_surge = df["ATR_Surge_Pct"] >= 30  # 평소보다 변동성이 30% 이상 커진 날
 
 # ===== 💡 [신규] 갭(Gap) 분석 =====
 # 어제 종가 대비 오늘 시가가 1% 이상 위에서 출발(갭상승)했는데,
@@ -490,7 +530,12 @@ final_buy_condition = final_buy_trigger & final_buy_filter
 
 if USE_GAP_FILTER:
     final_buy_condition = final_buy_condition & cond_gap_buy
-    
+
+if USE_ATR_SURGE:
+    final_buy_condition = final_buy_condition & cond_atr_surge
+
+if USE_MTF_FILTER and mtf_bullish is not None:
+    final_buy_condition = final_buy_condition & mtf_bullish  # 60분봉도 상승 추세일 때만 매수 인정
 # ---------------------------------------------------
 # (아래 줄은 기존 코드와 연결되는 부분입니다)
 df.loc[final_buy_condition, "signal"] = 1
