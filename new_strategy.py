@@ -298,17 +298,14 @@ col_s10, col_s11, col_s12 = st.columns(3)
 with col_s10:
     USE_ATR_SURGE = st.checkbox("ATR 급변 필터", False)
     st.caption("평소(최근 5일 평균) 대비 오늘 변동성(ATR)이 30% 이상 갑자기 커지면 포착해요. "
-               "변동성이 급격히 커지는 시점은 큰 자금이 들어오기 시작하는 타이밍과 자주 겹쳐요. "
-               "매수: 다른 매수 신호와 같이 뜰 때 신뢰도를 높이는 보조 용도로 활용하세요.")
-# with col_s11:
-#     if interval_map[interval_kr] == "1d":
-#         USE_MTF_FILTER = st.checkbox("멀티 타임프레임 확인", False)
-#         st.caption("일봉에서 매수 신호가 떠도, 더 짧은 시간 단위(60분봉)의 최근 흐름도 같은 방향인지 "
-#                    "같이 확인해요. 일봉은 좋은데 60분봉에서 막 꺾이는 중이면 타이밍이 안 좋을 수 있어요. "
-#                    "매수: 일봉 신호 + 60분봉 흐름이 같은 방향일 때 신뢰도가 더 높아요.")
-#     else:
-#         USE_MTF_FILTER = False
-#         st.caption("💡 멀티 타임프레임 확인은 '일봉' 선택 시에만 사용할 수 있어요.")
+           "변동성이 급격히 커지는 시점은 큰 자금이 들어오기 시작하는 타이밍과 자주 겹쳐요. "
+           "매수: 다른 매수 신호와 같이 뜰 때 신뢰도를 높이는 보조 용도로 활용하세요.")
+with col_s11:
+    USE_MTF_FILTER = st.checkbox("멀티 타임프레임 확인", False)
+    st.caption("일봉에서 매수 신호가 떠도, 더 짧은 시간 단위(60분봉)의 최근 흐름도 같은 방향인지 "
+           "같이 확인해요. 일봉은 좋은데 60분봉에서 막 꺾이는 중이면 타이밍이 안 좋을 수 있어요. "
+           "매수: 일봉 신호 + 60분봉 흐름이 같은 방향일 때 신뢰도가 더 높아요.")
+
 st.markdown("---")
 
 # 데이터 매핑
@@ -326,14 +323,14 @@ try:
     df.index = df.index.tz_convert('Asia/Seoul')
     # ===== 💡 [신규] 멀티 타임프레임 확인용 60분봉 데이터 추가 수집 =====
 # 일봉 신호가 떴을 때, 더 짧은 시간 단위(60분봉)에서도 같은 방향인지 확인하기 위함
+    df_60m = stock.history(period="5d", interval="60m")  # 60분봉은 최근 며칠치만 지원되는 경우가 많아 5d로 제한
+    if not df_60m.empty:
+        df_60m.index = df_60m.index.tz_convert('Asia/Seoul')
+        df_60m["MA20_60m"] = df_60m["Close"].rolling(window=20).mean()
+        # 60분봉 기준 최근 흐름이 상승세인지: 최근 종가가 60분봉 MA20 위에 있는지로 판단
+        mtf_bullish = df_60m["Close"].iloc[-1] > df_60m["MA20_60m"].iloc[-1] if len(df_60m) >= 20 else None
+    else:
     mtf_bullish = None
-    if interval_map[interval_kr] == "1d" and USE_MTF_FILTER:
-        df_60m = stock.history(period="5d", interval="60m")
-        if not df_60m.empty:
-            df_60m.index = df_60m.index.tz_convert('Asia/Seoul')
-            df_60m["MA20_60m"] = df_60m["Close"].rolling(window=20).mean()
-            if len(df_60m) >= 20:
-            mtf_bullish = df_60m["Close"].iloc[-1] > df_60m["MA20_60m"].iloc[-1]
 
     pd.options.display.float_format = '{:.2f}'.format
 
@@ -345,12 +342,6 @@ try:
 except Exception as e:
     st.error("티커를 확인해주세요.")
     st.stop()
-
-if interval_map[interval_kr] == "1d" and USE_MTF_FILTER:
-    if mtf_bullish is None:
-        st.warning("60분봉 데이터가 부족해 멀티 타임프레임 확인이 어려워요.")
-    else:
-        st.caption(f"현재 60분봉 기준 흐름: {'🟢 상승 추세' if mtf_bullish else '🔴 하락/횡보 추세'}")
 
 # ===== 1. 기존 기술적 지표 계산 =====
 df["MA20"] = df["Close"].rolling(window=20).mean()
@@ -534,8 +525,6 @@ if USE_GAP_FILTER:
 if USE_ATR_SURGE:
     final_buy_condition = final_buy_condition & cond_atr_surge
 
-if USE_MTF_FILTER and mtf_bullish is not None:
-    final_buy_condition = final_buy_condition & mtf_bullish  # 60분봉도 상승 추세일 때만 매수 인정
 # ---------------------------------------------------
 # (아래 줄은 기존 코드와 연결되는 부분입니다)
 df.loc[final_buy_condition, "signal"] = 1
