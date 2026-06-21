@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 
-from macro_ticker import render_macro_ticker  
+from components.macro_ticker import render_macro_ticker  
 
 # 페이지 설정
 st.set_page_config(layout="wide", page_title="주식 전략 분석기")
