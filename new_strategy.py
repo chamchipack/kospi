@@ -239,6 +239,11 @@ if st.session_state.preset_to_apply:
 
 st.markdown("---")
 
+USE_GAP_FILTER = st.checkbox("갭상승 유지 필터", False)
+st.caption("어제 종가보다 1% 이상 높게 출발(갭상승)했는데 장중에도 그 갭을 안 메우고 버티면 "
+           "신규 매수세가 강하다는 뜻이에요. 매수: 갭 유지 시 진입 검토. "
+           "매도 참고: 갭이 장중에 메워지면(전일 종가 아래로 떨어지면) 가짜 신호로 보고 보류해요.")
+
 st.markdown("##### 🛡️ 필터 설정")
 
 col_s1, col_s2, col_s3 = st.columns(3)
@@ -365,6 +370,15 @@ df["ATR"] = df["TR"].rolling(window=14).mean()
 # 손절가 = 종가 - (ATR × 2) : 평소 변동폭의 2배만큼 빠지면 손절 기준선으로 봄
 df["Stop_Loss"] = df["Close"] - (df["ATR"] * 2)
 
+# ===== 💡 [신규] 갭(Gap) 분석 =====
+# 어제 종가 대비 오늘 시가가 1% 이상 위에서 출발(갭상승)했는데,
+# 장중 저가가 어제 종가 아래로 안 떨어지면(갭 유지) 신규 매수세가 강하다는 뜻
+prev_close_for_gap = df["Close"].shift(1)
+df["Gap_Pct"] = (df["Open"] - prev_close_for_gap) / prev_close_for_gap * 100
+df["Is_Gap_Up"] = df["Gap_Pct"] >= 1.0
+df["Gap_Held"] = df["Low"] > prev_close_for_gap
+cond_gap_buy = df["Is_Gap_Up"] & df["Gap_Held"]
+
 # ===== 💡 5. [신규] 볼린저 밴드 스퀴즈 (변동성 축소 → 확대 포착) =====
 # 밴드 폭 = (상단 - 하단) / 중심선(MA20) -> 비율로 표현해 변동성 수축/확장을 비교 가능하게 함
 df["BB_Width"] = (df["BB_Upper"] - df["BB_Lower"]) / df["MA20"]
@@ -474,6 +488,9 @@ else:
 # 3. 최종 결합: 신호등(트리거)이 켜졌고, 자격요건(필터)을 모두 통과했을 때만 최종 매수!
 final_buy_condition = final_buy_trigger & final_buy_filter
 
+if USE_GAP_FILTER:
+    final_buy_condition = final_buy_condition & cond_gap_buy
+    
 # ---------------------------------------------------
 # (아래 줄은 기존 코드와 연결되는 부분입니다)
 df.loc[final_buy_condition, "signal"] = 1
