@@ -169,7 +169,7 @@ else:
 st.subheader("📈 주식 기술적 분석 및 매매 신호 스캐너")
 
 st.markdown("##### 📌 즐겨찾기 종목")
-c_fav1, c_fav2, c_fav3, _ = st.columns([1.5, 1.2, 1.5, 6])
+c_fav1, c_fav2, c_fav3, _ = st.columns([1.5, 1.5, 1.5, 2])  # 버튼 크기에 맞게 조절
 
 # 세션 상태(Session State)를 활용해 버튼 클릭 시 티커 입력창 값 제어
 if "selected_ticker" not in st.session_state:
@@ -187,7 +187,7 @@ with c_fav3:
     if st.button("💎 삼성전자우", use_container_width=True):
         st.session_state.selected_ticker = "005935.KS"
         st.rerun()
-
+        
 # 1. 상단 제어 영역
 col1, col2, col3 = st.columns([2, 1, 1])
 with col1:
