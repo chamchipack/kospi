@@ -300,11 +300,6 @@ with col_s10:
     st.caption("평소(최근 5일 평균) 대비 오늘 변동성(ATR)이 30% 이상 갑자기 커지면 포착해요. "
            "변동성이 급격히 커지는 시점은 큰 자금이 들어오기 시작하는 타이밍과 자주 겹쳐요. "
            "매수: 다른 매수 신호와 같이 뜰 때 신뢰도를 높이는 보조 용도로 활용하세요.")
-with col_s11:
-    USE_MTF_FILTER = st.checkbox("멀티 타임프레임 확인", False)
-    st.caption("일봉에서 매수 신호가 떠도, 더 짧은 시간 단위(60분봉)의 최근 흐름도 같은 방향인지 "
-           "같이 확인해요. 일봉은 좋은데 60분봉에서 막 꺾이는 중이면 타이밍이 안 좋을 수 있어요. "
-           "매수: 일봉 신호 + 60분봉 흐름이 같은 방향일 때 신뢰도가 더 높아요.")
 
 st.markdown("---")
 
@@ -321,17 +316,6 @@ try:
 
     df = stock.history(period=period_map[period_kr], interval=interval_map[interval_kr])
     df.index = df.index.tz_convert('Asia/Seoul')
-    # ===== 💡 [신규] 멀티 타임프레임 확인용 60분봉 데이터 추가 수집 =====
-# 일봉 신호가 떴을 때, 더 짧은 시간 단위(60분봉)에서도 같은 방향인지 확인하기 위함
-    df_60m = stock.history(period="5d", interval="60m")  # 60분봉은 최근 며칠치만 지원되는 경우가 많아 5d로 제한
-    if not df_60m.empty:
-        df_60m.index = df_60m.index.tz_convert('Asia/Seoul')
-        df_60m["MA20_60m"] = df_60m["Close"].rolling(window=20).mean()
-        # 60분봉 기준 최근 흐름이 상승세인지: 최근 종가가 60분봉 MA20 위에 있는지로 판단
-        mtf_bullish = df_60m["Close"].iloc[-1] > df_60m["MA20_60m"].iloc[-1] if len(df_60m) >= 20 else None
-    else:
-    mtf_bullish = None
-
     pd.options.display.float_format = '{:.2f}'.format
 
     # 시장 대비 상대강도 필터를 위한 KOSPI 지수 데이터 (필요할 때만 호출)
@@ -521,9 +505,6 @@ final_buy_condition = final_buy_trigger & final_buy_filter
 
 if USE_GAP_FILTER:
     final_buy_condition = final_buy_condition & cond_gap_buy
-
-if USE_ATR_SURGE:
-    final_buy_condition = final_buy_condition & cond_atr_surge
 
 # ---------------------------------------------------
 # (아래 줄은 기존 코드와 연결되는 부분입니다)
