@@ -239,7 +239,8 @@ if st.session_state.preset_to_apply:
 
 st.markdown("---")
 
-
+period_map = {"1개월": "1mo", "3개월": "3mo", "6개월": "6mo", "1년": "1y"}
+interval_map = {"일봉": "1d", "60분봉": "60m", "15분봉": "15m"}
 
 st.markdown("##### 🛡️ 필터 설정")
 
@@ -300,12 +301,20 @@ with col_s10:
     st.caption("평소(최근 5일 평균) 대비 오늘 변동성(ATR)이 30% 이상 갑자기 커지면 포착해요. "
            "변동성이 급격히 커지는 시점은 큰 자금이 들어오기 시작하는 타이밍과 자주 겹쳐요. "
            "매수: 다른 매수 신호와 같이 뜰 때 신뢰도를 높이는 보조 용도로 활용하세요.")
+with col_s11:
+    if interval_map[interval_kr] == "1d":
+        USE_MTF_FILTER = st.checkbox("멀티 타임프레임 확인", False)
+        st.caption("일봉에서 매수 신호가 떠도, 더 짧은 시간 단위(60분봉)의 최근 흐름도 같은 방향인지 "
+                   "같이 확인해요. 일봉은 좋은데 60분봉에서 막 꺾이는 중이면 타이밍이 안 좋을 수 있어요. "
+                   "매수: 일봉 신호 + 60분봉 흐름이 같은 방향일 때 신뢰도가 더 높아요.")
+    else:
+        USE_MTF_FILTER = False
+        st.caption("💡 멀티 타임프레임 확인은 '일봉' 선택 시에만 사용할 수 있어요.")
 
 st.markdown("---")
 
 # 데이터 매핑
-period_map = {"1개월": "1mo", "3개월": "3mo", "6개월": "6mo", "1년": "1y"}
-interval_map = {"일봉": "1d", "60분봉": "60m", "15분봉": "15m"}
+
 
 # 2. 데이터 가져오기
 # [핵심] 인덱스를 문자열로 바꾸지 않음 -> rolling/shift 계산이 시간 순서 기준으로 정확히 동작
@@ -319,6 +328,15 @@ try:
     pd.options.display.float_format = '{:.2f}'.format
 
     # 시장 대비 상대강도 필터를 위한 KOSPI 지수 데이터 (필요할 때만 호출)
+    mtf_bullish = None
+    if interval_map[interval_kr] == "1d" and USE_MTF_FILTER:
+        df_60m = stock.history(period="5d", interval="60m")
+        if not df_60m.empty:
+            df_60m.index = df_60m.index.tz_convert('Asia/Seoul')
+            df_60m["MA20_60m"] = df_60m["Close"].rolling(window=20).mean()
+            if len(df_60m) >= 20:
+                mtf_bullish = df_60m["Close"].iloc[-1] > df_60m["MA20_60m"].iloc[-1]
+
     if USE_RELATIVE_STRENGTH:
         kospi = yf.Ticker("^KS11")
         df_kospi = kospi.history(period=period_map[period_kr], interval=interval_map[interval_kr])
@@ -326,6 +344,12 @@ try:
 except Exception as e:
     st.error("티커를 확인해주세요.")
     st.stop()
+
+if interval_map[interval_kr] == "1d" and USE_MTF_FILTER:
+    if mtf_bullish is None:
+        st.warning("60분봉 데이터가 부족해 멀티 타임프레임 확인이 어려워요.")
+    else:
+        st.caption(f"현재 60분봉 기준 흐름: {'🟢 상승 추세' if mtf_bullish else '🔴 하락/횡보 추세'}")
 
 # ===== 1. 기존 기술적 지표 계산 =====
 df["MA20"] = df["Close"].rolling(window=20).mean()
@@ -431,39 +455,7 @@ cond_rsi_oversold   = df["RSI"] <= 35
 
 
 # ----- [A] 매수 조건 조립 -----
-# if USE_TREND_FILTER:
-#     final_buy_condition = df["MA20"] > df["MA60"]
-# else:
-#     final_buy_condition = pd.Series(True, index=df.index)
 
-# if USE_MACD and USE_BOLLINGER:
-#     trigger = cond_macd_gold | cond_bb_breakout
-#     filter_cond = (df["MACD"] > df["MACD_Signal"]) & (df["Close"] >= df["MA20"])
-#     final_buy_condition = final_buy_condition & trigger & filter_cond
-# elif USE_MACD:
-#     final_buy_condition = final_buy_condition & cond_macd_gold
-# elif USE_BOLLINGER:
-#     final_buy_condition = final_buy_condition & cond_bb_breakout
-# else:
-#     final_buy_condition = cond_ma_gold
-
-# if USE_VOLUME_SPIKE:
-#     final_buy_condition = final_buy_condition & cond_volume_burst
-
-# if USE_RSI_FILTER:
-#     final_buy_condition = final_buy_condition | (cond_rsi_oversold & (df["Close"] >= df["MA60"]))
-
-# if USE_ICHIMOKU_CLOUD:
-#     cond_above_cloud = df["Close"] > df["Cloud_Top"]
-#     final_buy_condition = final_buy_condition & cond_above_cloud
-
-# if USE_RELATIVE_STRENGTH:
-#     final_buy_condition = final_buy_condition & cond_rs_rising
-
-# df.loc[final_buy_condition, "signal"] = 1
-# ----- [A] 매수 조건 조립 (트리거 & 필터 분리형으로 교정) -----
-
-# 1. 트리거(진입 신호) 모음집 - 이 중 하나라도 신호가 오면 출발 준비 (OR 연산)
 buy_triggers = []
 
 if USE_MACD:
@@ -506,6 +498,11 @@ final_buy_condition = final_buy_trigger & final_buy_filter
 if USE_GAP_FILTER:
     final_buy_condition = final_buy_condition & cond_gap_buy
 
+if USE_ATR_SURGE:
+    final_buy_condition = final_buy_condition & cond_atr_surge
+
+if USE_MTF_FILTER and mtf_bullish is not None:
+    final_buy_condition = final_buy_condition & mtf_bullish
 # ---------------------------------------------------
 # (아래 줄은 기존 코드와 연결되는 부분입니다)
 df.loc[final_buy_condition, "signal"] = 1
