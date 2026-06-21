@@ -300,15 +300,15 @@ with col_s10:
     st.caption("평소(최근 5일 평균) 대비 오늘 변동성(ATR)이 30% 이상 갑자기 커지면 포착해요. "
                "변동성이 급격히 커지는 시점은 큰 자금이 들어오기 시작하는 타이밍과 자주 겹쳐요. "
                "매수: 다른 매수 신호와 같이 뜰 때 신뢰도를 높이는 보조 용도로 활용하세요.")
-with col_s11:
-    if interval_map[interval_kr] == "1d":
-        USE_MTF_FILTER = st.checkbox("멀티 타임프레임 확인", False)
-        st.caption("일봉에서 매수 신호가 떠도, 더 짧은 시간 단위(60분봉)의 최근 흐름도 같은 방향인지 "
-                   "같이 확인해요. 일봉은 좋은데 60분봉에서 막 꺾이는 중이면 타이밍이 안 좋을 수 있어요. "
-                   "매수: 일봉 신호 + 60분봉 흐름이 같은 방향일 때 신뢰도가 더 높아요.")
-    else:
-        USE_MTF_FILTER = False
-        st.caption("💡 멀티 타임프레임 확인은 '일봉' 선택 시에만 사용할 수 있어요.")
+# with col_s11:
+#     if interval_map[interval_kr] == "1d":
+#         USE_MTF_FILTER = st.checkbox("멀티 타임프레임 확인", False)
+#         st.caption("일봉에서 매수 신호가 떠도, 더 짧은 시간 단위(60분봉)의 최근 흐름도 같은 방향인지 "
+#                    "같이 확인해요. 일봉은 좋은데 60분봉에서 막 꺾이는 중이면 타이밍이 안 좋을 수 있어요. "
+#                    "매수: 일봉 신호 + 60분봉 흐름이 같은 방향일 때 신뢰도가 더 높아요.")
+#     else:
+#         USE_MTF_FILTER = False
+#         st.caption("💡 멀티 타임프레임 확인은 '일봉' 선택 시에만 사용할 수 있어요.")
 st.markdown("---")
 
 # 데이터 매핑
@@ -333,7 +333,7 @@ try:
             df_60m.index = df_60m.index.tz_convert('Asia/Seoul')
             df_60m["MA20_60m"] = df_60m["Close"].rolling(window=20).mean()
             if len(df_60m) >= 20:
-                mtf_bullish = df_60m["Close"].iloc[-1] > df_60m["MA20_60m"].iloc[-1]
+            mtf_bullish = df_60m["Close"].iloc[-1] > df_60m["MA20_60m"].iloc[-1]
 
     pd.options.display.float_format = '{:.2f}'.format
 
