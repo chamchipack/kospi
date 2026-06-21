@@ -190,15 +190,19 @@ FILTER_PRESETS = {
         "trend": True, "macd": True, "bollinger": False,
         "volume": True, "rsi": False, "ichimoku": False,
         "atr": True, "relative_strength": False,
+        "gap": False, "atr_surge": False, "mtf": True,
         "설명": "큰 흐름이 상승 중인 종목만 거른 뒤(정배열), MACD 골든크로스로 진입 타이밍을 잡아요. "
                 "거래량으로 가짜 신호를 줄이고 ATR로 손절 기준을 같이 봐요. "
+                "여기에 멀티 타임프레임 확인을 더해 60분봉 흐름까지 같은 방향인지 한 번 더 검증해요. "
                 "신호는 적지만 신뢰도가 높은 가장 안전한 조합이에요. 추세가 뚜렷한 장에 적합해요."
     },
     "변동성 돌파 (모멘텀 추격형)": {
         "trend": False, "macd": False, "bollinger": True,
         "volume": True, "rsi": False, "ichimoku": False,
         "atr": True, "relative_strength": False,
+        "gap": True, "atr_surge": True, "mtf": False,
         "설명": "볼린저 상단을 강하게 뚫는 순간을 거래량으로 검증해서 빠르게 잡는 조합이에요. "
+                "갭상승 유지와 ATR 급변까지 더해, '진짜 돈이 몰려서 터지는 중'인지 다각도로 확인해요. "
                 "정배열은 일부러 빼는데, 추세 초입엔 장기 이동평균이 못 따라온 경우가 많아서예요. "
                 "막 터지기 시작하는 종목을 추격할 때 적합하고, 추격매수라 ATR 손절은 필수예요."
     },
@@ -206,17 +210,31 @@ FILTER_PRESETS = {
         "trend": False, "macd": True, "bollinger": False,
         "volume": False, "rsi": True, "ichimoku": False,
         "atr": True, "relative_strength": True,
+        "gap": False, "atr_surge": False, "mtf": True,
         "설명": "RSI 과매도 구간에서의 반등을 노리되, 시장보다 덜 빠지거나 더 빨리 회복하는 "
-                "'진짜 강한 종목'인지 상대강도로 검증해요. 여기에 MACD 골든크로스를 더해 "
-                "'그냥 많이 빠진 것'과 '바닥을 찍고 모멘텀이 꺾여 올라오는 것'을 구분해요. "
+                "'진짜 강한 종목'인지 상대강도로 검증해요. 여기에 MACD 골든크로스와 멀티 타임프레임 확인을 더해 "
+                "'그냥 많이 빠진 것'과 '바닥을 찍고 모멘텀이 꺾여 60분봉에서도 살아나는 것'을 구분해요. "
                 "심리적으로 어려운 조합이라 익숙해진 뒤 시도하는 걸 권해요."
+    },
+    "갭 추격 (단기 강세형)": {
+        "trend": False, "macd": False, "bollinger": False,
+        "volume": True, "rsi": False, "ichimoku": False,
+        "atr": True, "relative_strength": False,
+        "gap": True, "atr_surge": True, "mtf": False,
+        "설명": "전일 종가보다 갭상승으로 출발했는데 장중에 그 갭을 안 메우고 버티는 종목을 잡아요. "
+                "거래량 폭발과 ATR 급변까지 같이 확인해서, 단순 호가 공백이 아니라 "
+                "진짜 매수세가 몰려서 생긴 갭인지 검증해요. 신호가 뜬 당일 단기 대응에 적합하고, "
+                "변동성이 크니 ATR 손절은 반드시 같이 봐야 해요."
     },
 }
 
 if "preset_to_apply" not in st.session_state:
     st.session_state.preset_to_apply = None
 
-st.markdown("##### 🎯 추천 필터 조합")
+period_map = {"1개월": "1mo", "3개월": "3mo", "6개월": "6mo", "1년": "1y"}
+interval_map = {"일봉": "1d", "60분봉": "60m", "15분봉": "15m"}
+
+st.markdown("##### 🛡️ 필터 설정")
 
 @st.dialog("추천 필터 조합 선택")
 def show_preset_modal():
@@ -237,12 +255,6 @@ applied_preset = FILTER_PRESETS.get(st.session_state.preset_to_apply, {})
 if st.session_state.preset_to_apply:
     st.success(f"✅ '{st.session_state.preset_to_apply}' 조합이 적용됐어요. 아래에서 개별 조정도 가능해요.")
 
-st.markdown("---")
-
-period_map = {"1개월": "1mo", "3개월": "3mo", "6개월": "6mo", "1년": "1y"}
-interval_map = {"일봉": "1d", "60분봉": "60m", "15분봉": "15m"}
-
-st.markdown("##### 🛡️ 필터 설정")
 
 col_s1, col_s2, col_s3 = st.columns(3)
 with col_s1:
@@ -290,20 +302,20 @@ with col_s8:
                "매수: 상대강도가 우상향 중일 때 = 시장이 빠져도 버티거나 시장보다 더 오르는 '진짜 힘 있는' 종목. "
                "매도: 상대강도가 꺾이면 = 시장 따라 출렁이기만 하는 종목일 수 있어 신뢰도 하락.")
 with col_s9:
-    USE_GAP_FILTER = st.checkbox("갭상승 유지 필터", False)
+    USE_GAP_FILTER = st.checkbox("갭상승 유지 필터", applied_preset.get("gap", False))
     st.caption("어제 종가보다 1% 이상 높게 출발(갭상승)했는데 장중에도 그 갭을 안 메우고 버티면 "
             "신규 매수세가 강하다는 뜻이에요. 매수: 갭 유지 시 진입 검토. "
                 "매도 참고: 갭이 장중에 메워지면(전일 종가 아래로 떨어지면) 가짜 신호로 보고 보류해요.")
 
 col_s10, col_s11, col_s12 = st.columns(3)
 with col_s10:
-    USE_ATR_SURGE = st.checkbox("ATR 급변 필터", False)
+    USE_ATR_SURGE = st.checkbox("ATR 급변 필터", applied_preset.get("atr_surge", False))
     st.caption("평소(최근 5일 평균) 대비 오늘 변동성(ATR)이 30% 이상 갑자기 커지면 포착해요. "
            "변동성이 급격히 커지는 시점은 큰 자금이 들어오기 시작하는 타이밍과 자주 겹쳐요. "
            "매수: 다른 매수 신호와 같이 뜰 때 신뢰도를 높이는 보조 용도로 활용하세요.")
 with col_s11:
     if interval_map[interval_kr] == "1d":
-        USE_MTF_FILTER = st.checkbox("멀티 타임프레임 확인", False)
+        USE_MTF_FILTER = st.checkbox("멀티 타임프레임 확인", applied_preset.get("mtf", False))
         st.caption("일봉에서 매수 신호가 떠도, 더 짧은 시간 단위(60분봉)의 최근 흐름도 같은 방향인지 "
                    "같이 확인해요. 일봉은 좋은데 60분봉에서 막 꺾이는 중이면 타이밍이 안 좋을 수 있어요. "
                    "매수: 일봉 신호 + 60분봉 흐름이 같은 방향일 때 신뢰도가 더 높아요.")
