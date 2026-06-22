@@ -168,25 +168,7 @@ else:
     st.warning("신용 스프레드 데이터를 일시적으로 가져오지 못했어요. 잠시 후 새로고침해보세요.")
 st.subheader("📈 주식 기술적 분석 및 매매 신호 스캐너")
 
-st.markdown("##### 📌 즐겨찾기 종목")
-c_fav1, c_fav2, c_fav3, _ = st.columns([1.5, 1.5, 1.5, 2])  # 버튼 크기에 맞게 조절
-
-# 세션 상태(Session State)를 활용해 버튼 클릭 시 티커 입력창 값 제어
-if "selected_ticker" not in st.session_state:
-    st.session_state.selected_ticker = "009150.KS"  # 기본값 (삼성전기)
-
-with c_fav1:
-    if st.button("⚡ LS ELECTRIC", use_container_width=True):
-        st.session_state.selected_ticker = "010120.KS"
-        st.rerun()
-with c_fav2:
-    if st.button("🏦 삼성생명", use_container_width=True):
-        st.session_state.selected_ticker = "032830.KS"
-        st.rerun()
-with c_fav3:
-    if st.button("💎 삼성전자우", use_container_width=True):
-        st.session_state.selected_ticker = "005935.KS"
-        st.rerun()
+st.caption("💡 **자주 보는 티커:** LS ELECTRIC (`010120.KS`) | 삼성생명 (`032830.KS`) | 삼성전자우 (`005935.KS`)")
         
 # 1. 상단 제어 영역
 col1, col2, col3 = st.columns([2, 1, 1])
