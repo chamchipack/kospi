@@ -713,6 +713,8 @@ MACRO_TICKERS = {
     "美 10년물": ("^TNX", "금리 상승 시 나스닥·성장주 ETF 밸류에이션 부담. 배당주는 채권 대비 매력 감소. 금리 하락 시 역방향."),
     "美 2년물": ("^IRX", "단기 금리. 10년물과의 차이(장단기 스프레드)가 마이너스면 경기침체 선행신호."),
     "WTI 원유": ("CL=F", "유가 급등은 인플레 자극 → 금리 인하 기대 약화 → 성장주 부담. 배당주·에너지 ETF에는 호재."),
+    "금": ("GC=F", "안전자산 선호 심리 지표. 금 급등은 위험회피 심리 강화 신호."),
+    "달러인덱스(DXY)": ("DX-Y.NYB", "달러 전반 강도. DXY 상승 = 원화 약세 → 환노출 ETF 유리. 하락 = 원화 강세 → 매수 속도 조절."),
     "VIX": ("^VIX", "20 이하: 안정. 20~30: 경계. 30 이상: 공포. VIX 급등 시 분할매수 기회, 하지만 추가 하락 가능성도 있음."),
     "VXN(나스닥 변동성)": ("^VXN", "나스닥 전용 변동성 지수. QQQI·SPYI같은 커버드콜 ETF는 VXN 높을수록 옵션 프리미엄(배당 재원)이 커짐."),
     "S&P500": ("^GSPC", "KODEX S&P500의 추종 지수. 현물 방향이 ETF 가격의 가장 직접적 기준."),
@@ -721,9 +723,14 @@ MACRO_TICKERS = {
     "나스닥 선물": ("NQ=F", "나스닥 야간 선물. 장 마감 후 기술주 흐름 파악."),
     "필라델피아 반도체": ("^SOX", "반도체 섹터 선행지표. 나스닥100 내 반도체 비중이 높아 SOX 방향이 나스닥 ETF와 연동."),
     "SCHD(다우배당 기초)": ("SCHD", "TIGER 미국배당다우존스의 실질적 벤치마크. SCHD 흐름이 곧 TIGER 배당 ETF 방향."),
-    "달러인덱스(DXY)": ("DX-Y.NYB", "달러 전반 강도. DXY 상승 = 원화 약세 → 환노출 ETF 유리. 하락 = 원화 강세 → 매수 속도 조절."),
-    "금": ("GC=F", "안전자산 선호 심리 지표. 금 급등은 위험회피 심리 강화 신호."),
     "MSCI 한국(EWY)": ("EWY", "미국에서 거래되는 한국 시장 대리지표. 환율·지수 복합 반영."),
+}
+
+# 그룹 정의
+MACRO_GROUPS = {
+    "💱 환율 · 국채 · 원자재": ["원/달러", "엔/달러", "달러인덱스(DXY)", "美 10년물", "美 2년물", "WTI 원유", "금"],
+    "📊 지수 · 섹터": ["S&P500", "S&P500 선물", "나스닥100", "나스닥 선물", "필라델피아 반도체", "SCHD(다우배당 기초)", "MSCI 한국(EWY)"],
+    "🌡️ 변동성": ["VIX", "VXN(나스닥 변동성)"],
 }
 
 @st.cache_data(ttl=300)
@@ -732,38 +739,54 @@ def get_all_macro():
     for name, (ticker, desc) in MACRO_TICKERS.items():
         hist = fetch(ticker, period="30d")
         cur, chg = safe_change(hist)
-        results[name] = {"ticker": ticker, "value": cur, "change_pct": chg, "desc": desc, "hist": hist}
+        results[name] = {"ticker": ticker, "value": cur, "change_pct": chg, "desc": desc}
     return results
+
+def render_macro_card(name, d):
+    """카드 HTML 하나 렌더링"""
+    if d["value"] is None:
+        st.markdown(
+            f"<div style='background:#1a1a1a; border-radius:8px; padding:12px; margin-bottom:6px; opacity:0.4;'>"
+            f"<div style='font-size:12px; color:gray;'>{name}</div>"
+            f"<div style='font-size:13px; color:#555;'>데이터 없음</div>"
+            f"</div>",
+            unsafe_allow_html=True
+        )
+        return
+
+    arrow, color = color_arrow(d["change_pct"])
+    chg_str = f"{arrow} {abs(d['change_pct']):.2f}%" if d["change_pct"] is not None else ""
+    bg = "#1e1e1e"
+
+    st.markdown(
+        f"<div style='background:{bg}; border-left:3px solid {color}; border-radius:6px; "
+        f"padding:10px 14px; margin-bottom:6px;'>"
+        f"<div style='display:flex; justify-content:space-between; align-items:flex-start;'>"
+        f"  <div>"
+        f"    <div style='font-size:11px; color:#888;'>{d['ticker']}</div>"
+        f"    <div style='font-size:13px; font-weight:600; color:#eee;'>{name}</div>"
+        f"  </div>"
+        f"  <div style='text-align:right;'>"
+        f"    <div style='font-size:17px; font-weight:bold; color:#fff;'>{d['value']:,.2f}</div>"
+        f"    <div style='font-size:12px; color:{color};'>{chg_str}</div>"
+        f"  </div>"
+        f"</div>"
+        f"<div style='font-size:10px; color:#777; margin-top:6px; line-height:1.4;'>{d['desc']}</div>"
+        f"</div>",
+        unsafe_allow_html=True
+    )
 
 with st.spinner("거시지표 불러오는 중..."):
     macro = get_all_macro()
 
-# 3열 카드로 표시
-macro_names = list(macro.keys())
-cols = st.columns(3)
-for i, name in enumerate(macro_names):
-    d = macro[name]
-    with cols[i % 3]:
-        if d["value"] is not None:
-            arrow, color = color_arrow(d["change_pct"])
-            chg_str = f"{arrow} {abs(d['change_pct']):.2f}%" if d["change_pct"] is not None else ""
-            st.markdown(
-                f"<div style='border:1px solid #333; border-radius:8px; padding:10px; margin-bottom:8px;'>"
-                f"<div style='font-size:12px; color:gray;'>{d['ticker']}</div>"
-                f"<div style='font-size:14px; font-weight:bold;'>{name}</div>"
-                f"<div style='font-size:18px;'>{d['value']:,.2f} "
-                f"<span style='font-size:13px; color:{color};'>{chg_str}</span></div>"
-                f"<div style='font-size:11px; color:#aaa; margin-top:4px;'>{d['desc']}</div>"
-                f"</div>",
-                unsafe_allow_html=True
-            )
-        else:
-            st.markdown(
-                f"<div style='border:1px solid #333; border-radius:8px; padding:10px; margin-bottom:8px; opacity:0.4;'>"
-                f"<div style='font-size:14px;'>{name} — 데이터 없음</div></div>",
-                unsafe_allow_html=True
-            )
-
+for group_name, names in MACRO_GROUPS.items():
+    st.markdown(f"#### {group_name}")
+    n_cols = 2 if group_name == "🌡️ 변동성" else 3
+    cols = st.columns(n_cols)
+    for i, name in enumerate(names):
+        with cols[i % n_cols]:
+            render_macro_card(name, macro[name])
+    st.markdown("")
 # ============================================================
 # 섹션 2: 핵심 파생지표 계산
 # ============================================================
