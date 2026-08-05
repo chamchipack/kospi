@@ -795,7 +795,6 @@ st.markdown("## 📐 핵심 파생지표")
 
 col_a, col_b, col_c = st.columns(3)
 
-# 장단기 금리차 (10년 - 2년)
 with col_a:
     st.markdown("#### 📉 장단기 금리차 (10Y - 2Y)")
     st.caption("마이너스(역전) 상태가 지속되면 역사적으로 경기침체 선행신호예요. 역전 해소 후 침체가 오는 패턴이 많아요.")
@@ -803,17 +802,24 @@ with col_a:
     irx = macro["美 2년물"]["value"]
     if tnx and irx:
         spread = tnx - irx
-        spread_color = "#d62728" if spread >= 0 else "#1f77b4"
-        spread_label = "✅ 정상 (장기>단기)" if spread >= 0 else "⚠️ 역전 중 (경기침체 선행신호)"
+        spread_badge_bg = "#1a3a1a" if spread >= 0 else "#3a1a1a"
+        spread_badge_color = "#4caf50" if spread >= 0 else "#f44336"
+        spread_label = "✅ 정상" if spread >= 0 else "⚠️ 역전 중"
+        spread_sub = "경기침체 우려 낮음" if spread >= 0 else "역사적 경기침체 선행신호"
         st.markdown(
-            f"<div style='font-size:28px; font-weight:bold; color:{spread_color};'>{spread:+.2f}%p</div>"
-            f"<div style='font-size:13px;'>{spread_label}</div>",
+            f"<div style='background:{spread_badge_bg}; border-left:4px solid {spread_badge_color}; "
+            f"border-radius:6px; padding:10px 14px;'>"
+            f"<span style='background:{spread_badge_color}; color:#fff; font-size:11px; font-weight:bold; "
+            f"padding:2px 8px; border-radius:20px;'>{spread_label}</span>"
+            f"<div style='font-size:20px; font-weight:bold; color:{spread_badge_color}; margin:6px 0 2px;'>"
+            f"{spread:+.2f}%p</div>"
+            f"<div style='font-size:11px; color:#aaa;'>{spread_sub}</div>"
+            f"</div>",
             unsafe_allow_html=True
         )
     else:
         st.warning("데이터 없음")
 
-# 200일 이평선 이격도 (S&P500)
 with col_b:
     st.markdown("#### 📊 S&P500 200일선 이격도")
     st.caption("현재가가 200일 이동평균보다 얼마나 위/아래에 있는지예요. +10% 이상이면 과열, -10% 이하면 저점 매수 기회 신호.")
@@ -824,12 +830,23 @@ with col_b:
         if not sp_hist.empty:
             cur_sp = sp_hist["Close"].iloc[-1]
             ma200 = sp_hist["MA200"].iloc[-1]
-            gap = (cur_sp - ma200) / ma200 * 100
-            gap_color = "#d62728" if gap >= 0 else "#1f77b4"
-            gap_label = "🔥 과열 구간" if gap > 10 else ("✅ 적정 구간" if gap > -10 else "💚 저평가 구간")
+            gap_sp = (cur_sp - ma200) / ma200 * 100
+            if gap_sp > 10:
+                bg2, bc2, lb2, sub2 = "#3a2a1a", "#ff9800", "🔥 과열", "신규 매수 속도 줄이세요"
+            elif gap_sp > -10:
+                bg2, bc2, lb2, sub2 = "#1a2a3a", "#2196f3", "✅ 적정", "꾸준한 적립식 매수 유효"
+            else:
+                bg2, bc2, lb2, sub2 = "#1a3a1a", "#4caf50", "💚 저평가", "적극 분할매수 기회"
             st.markdown(
-                f"<div style='font-size:28px; font-weight:bold; color:{gap_color};'>{gap:+.1f}%</div>"
-                f"<div style='font-size:13px;'>{gap_label} (현재 {cur_sp:,.0f} / MA200 {ma200:,.0f})</div>",
+                f"<div style='background:{bg2}; border-left:4px solid {bc2}; "
+                f"border-radius:6px; padding:10px 14px;'>"
+                f"<span style='background:{bc2}; color:#fff; font-size:11px; font-weight:bold; "
+                f"padding:2px 8px; border-radius:20px;'>{lb2}</span>"
+                f"<div style='font-size:20px; font-weight:bold; color:{bc2}; margin:6px 0 2px;'>"
+                f"{gap_sp:+.1f}%</div>"
+                f"<div style='font-size:11px; color:#aaa;'>현재 {cur_sp:,.0f} / MA200 {ma200:,.0f}</div>"
+                f"<div style='font-size:11px; color:#aaa; margin-top:2px;'>{sub2}</div>"
+                f"</div>",
                 unsafe_allow_html=True
             )
         else:
@@ -837,7 +854,6 @@ with col_b:
     else:
         st.warning("데이터 없음")
 
-# 나스닥 200일선 이격도
 with col_c:
     st.markdown("#### 📊 나스닥100 200일선 이격도")
     st.caption("나스닥 기반 ETF(KODEX 나스닥100, QQQI, SPYI) 매수 타이밍 판단에 직결돼요.")
@@ -849,18 +865,28 @@ with col_c:
             cur_ndx = ndx_hist["Close"].iloc[-1]
             ma200_ndx = ndx_hist["MA200"].iloc[-1]
             gap_ndx = (cur_ndx - ma200_ndx) / ma200_ndx * 100
-            gap_color2 = "#d62728" if gap_ndx >= 0 else "#1f77b4"
-            gap_label2 = "🔥 과열 구간" if gap_ndx > 10 else ("✅ 적정 구간" if gap_ndx > -10 else "💚 저평가 구간")
+            if gap_ndx > 10:
+                bg3, bc3, lb3, sub3 = "#3a2a1a", "#ff9800", "🔥 과열", "신규 매수 속도 줄이세요"
+            elif gap_ndx > -10:
+                bg3, bc3, lb3, sub3 = "#1a2a3a", "#2196f3", "✅ 적정", "꾸준한 적립식 매수 유효"
+            else:
+                bg3, bc3, lb3, sub3 = "#1a3a1a", "#4caf50", "💚 저평가", "적극 분할매수 기회"
             st.markdown(
-                f"<div style='font-size:28px; font-weight:bold; color:{gap_color2};'>{gap_ndx:+.1f}%</div>"
-                f"<div style='font-size:13px;'>{gap_label2} (현재 {cur_ndx:,.0f} / MA200 {ma200_ndx:,.0f})</div>",
+                f"<div style='background:{bg3}; border-left:4px solid {bc3}; "
+                f"border-radius:6px; padding:10px 14px;'>"
+                f"<span style='background:{bc3}; color:#fff; font-size:11px; font-weight:bold; "
+                f"padding:2px 8px; border-radius:20px;'>{lb3}</span>"
+                f"<div style='font-size:20px; font-weight:bold; color:{bc3}; margin:6px 0 2px;'>"
+                f"{gap_ndx:+.1f}%</div>"
+                f"<div style='font-size:11px; color:#aaa;'>현재 {cur_ndx:,.0f} / MA200 {ma200_ndx:,.0f}</div>"
+                f"<div style='font-size:11px; color:#aaa; margin-top:2px;'>{sub3}</div>"
+                f"</div>",
                 unsafe_allow_html=True
             )
         else:
             st.warning("MA200 계산 불가 (데이터 부족)")
     else:
         st.warning("데이터 없음")
-
 # 원달러 이동평균 이격도
 st.markdown("---")
 col_d, col_e = st.columns(2)
